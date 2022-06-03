@@ -1,7 +1,5 @@
 package main
 
-// go get github.com/mattn/go-sqlite3 github.com/go-telegram-bot-api/telegram-bot-api mvdan.cc/xurls github.com/sirupsen/logrus
-
 import (
 	"bytes"
 	"context"
@@ -365,7 +363,7 @@ func main() {
 		}
 	}()
 
-	rxStrict := xurls.Strict()
+	rxStrict := xurls.Strict
 
 	offset := 0
 
