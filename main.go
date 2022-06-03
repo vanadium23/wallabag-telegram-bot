@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"os/user"
-	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/spf13/viper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	_ "github.com/mattn/go-sqlite3"
@@ -55,32 +55,24 @@ type BotInfo struct {
 var botInfo BotInfo
 
 func (b *BotInfo) readConfig() {
-	usr, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
+	viper.SetConfigName("wallabag")
+	viper.AddConfigPath("$HOME/.config/t.me")
+	viper.AddConfigPath(".")
+	viper.ReadInConfig()
 
-	configFile := filepath.Join(usr.HomeDir, ".config", "t.me", "wallabag.json")
+	viper.SetConfigFile(".env")
+	viper.MergeInConfig()
 
-	if _, err := os.Stat(configFile); err != nil {
-		log.Fatalf("Fail to open config file %s with error: %v", configFile, err)
-	}
+	viper.SetEnvPrefix("WALLABOT")
+	viper.AutomaticEnv()
 
-	jsonFile, err := os.Open(configFile)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer jsonFile.Close()
-
-	var content []byte
-
-	if content, err = ioutil.ReadAll(jsonFile); err != nil {
-		log.Fatalf("Fail to read bot config: %v", err)
-	}
-
-	if err := json.Unmarshal(content, &b); err != nil {
-		log.Fatalf("Fail to parse bot config: %v", err)
-	}
+	b.Token = viper.GetString("token")
+	b.Site = viper.GetString("wallabag_site")
+	b.ClientID = viper.GetString("client_id")
+	b.ClientSecret = viper.GetString("client_secret")
+	b.Username = viper.GetString("username")
+	b.Password = viper.GetString("password")
+	b.FilterUsers = viper.GetStringSlice("filter_users")
 
 	if b.Token == "" || b.Site == "" || b.ClientID == "" || b.ClientSecret == "" || b.Username == "" || b.Password == "" {
 		log.Fatalf("Fail to parse bot token and wallabag credentials")
