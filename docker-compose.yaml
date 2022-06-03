@@ -2,6 +2,6 @@ version: "3"
 services:
   bot:
     build: .
-    volumes:
-      - /your/path/to/wallabag.json:/root/.config/t.me
+    # volumes:
+    #   - /your/path/to/wallabag.json:/root/.config/t.me
     network_mode: "host" # if wallabag is not public facing
