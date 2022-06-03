@@ -5,3 +5,11 @@ services:
     # volumes:
     #   - /your/path/to/wallabag.json:/root/.config/t.me
     network_mode: "host" # if wallabag is not public facing
+    environment:
+      - WALLABOT_TOKEN=${WALLABOT_TOKEN}
+      - WALLABOT_WALLABAG_SITE=${WALLABOT_WALLABAG_SITE}
+      - WALLABOT_CLIENT_ID=${WALLABOT_CLIENT_ID}
+      - WALLABOT_CLIENT_SECRET=${WALLABOT_CLIENT_SECRET}
+      - WALLABOT_USERNAME=${WALLABOT_USERNAME}
+      - WALLABOT_PASSWORD=${WALLABOT_PASSWORD}
+      - WALLABOT_FILTER_USERS=${WALLABOT_FILTER_USERS}
