@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,6 +16,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	logrus "github.com/sirupsen/logrus"
 	xurls "mvdan.cc/xurls"
+
+	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
 )
 
 var log *logrus.Logger
@@ -35,7 +34,7 @@ func init() {
 	log.Info("Init")
 
 	signalCh = make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt, os.Kill,
+	signal.Notify(signalCh, os.Interrupt,
 		syscall.SIGINT,
 		syscall.SIGTERM)
 
@@ -230,15 +229,7 @@ func sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequ
 	}()
 }
 
-type wallabagTokenResp struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int    `json:"expires_in"`
-}
-
-func wallabagHandler(reqQueue, diskAckQueue chan saveURLRequest) {
-	bearer := ""
-	bearerExpire := time.Now()
-
+func wallabagHandler(wc wallabag.WallabagClient, reqQueue, diskAckQueue chan saveURLRequest) {
 	go func() {
 		for {
 			var r saveURLRequest
@@ -247,65 +238,9 @@ func wallabagHandler(reqQueue, diskAckQueue chan saveURLRequest) {
 			case <-ctx.Done():
 				return
 			}
-			if time.Now().After(bearerExpire) || bearer == "" {
-				requestURL := fmt.Sprintf(
-					"https://%s/oauth/v2/token?grant_type=password&client_id=%s&client_secret=%s&username=%s&password=%s",
-					botInfo.Site,
-					botInfo.ClientID,
-					botInfo.ClientSecret,
-					botInfo.Username,
-					botInfo.Password,
-				)
-				resp, err := http.Get(requestURL)
-				if err != nil {
-					log.Errorf("Fail to get token %v", err)
-					continue
-				}
-				defer resp.Body.Close()
-
-				if resp.StatusCode != http.StatusOK {
-					log.Errorf("Fail to get token %+v", resp.Header)
-					continue
-				}
-
-				bodyBytes, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					log.Error(err)
-					continue
-				}
-				tokenResp := wallabagTokenResp{}
-				if err = json.Unmarshal(bodyBytes, &tokenResp); err != nil {
-					log.Error(err)
-					continue
-				}
-
-				bearerExpire = time.Now().Local().Add(time.Second * time.Duration(tokenResp.ExpiresIn))
-				bearer = tokenResp.AccessToken
-
-				log.Infof("New token fetched: %s", bearer)
-			}
-
-			req, err := http.NewRequest(
-				"POST",
-				fmt.Sprintf("https://%s/api/entries.json", botInfo.Site),
-				bytes.NewBuffer([]byte(fmt.Sprintf(`{ "url": "%s" }`, r.URL))))
-
+			_, err := wc.CreateArticle(r.URL)
 			if err != nil {
 				log.Error(err)
-				continue
-			}
-			req.Header.Set("Accept", "application/json")
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearer))
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				log.Errorf("Wallabag returns error code: %v", resp.StatusCode)
 				continue
 			}
 
@@ -323,8 +258,16 @@ func main() {
 	reqQueue := make(chan saveURLRequest, 100)
 	diskAckQueue := make(chan saveURLRequest, 100)
 	ackQueue := make(chan saveURLRequest, 100)
+	wallabagClient := wallabag.NewWallabagClient(
+		http.DefaultClient,
+		fmt.Sprintf("https://%s", botInfo.Site),
+		botInfo.ClientID,
+		botInfo.ClientSecret,
+		botInfo.Username,
+		botInfo.Password,
+	)
 
-	wallabagHandler(reqQueue, diskAckQueue)
+	wallabagHandler(wallabagClient, reqQueue, diskAckQueue)
 	sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue)
 
 	filterUsers := map[string]bool{}
