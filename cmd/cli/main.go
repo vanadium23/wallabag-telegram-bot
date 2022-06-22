@@ -17,6 +17,7 @@ import (
 	logrus "github.com/sirupsen/logrus"
 	xurls "mvdan.cc/xurls"
 
+	"github.com/vanadium23/wallabag-telegram-bot/internal/articles"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
 )
 
@@ -86,62 +87,20 @@ type saveURLRequest struct {
 
 const rescanInterval = 3600
 
-func sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequest) {
-	var database *sql.DB
-	var statement *sql.Stmt
-	var err error
-	database, err = sql.Open("sqlite3", "./wallabag.db")
-
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	if statement, err = database.Prepare(`CREATE TABLE IF NOT EXISTS Requests (	
-			id INTEGER PRIMARY KEY AUTOINCREMENT, 
-			URL TEXT, 
-			ChatID INTEGER,
-			MessageID INTEGER,
-			saved INTEGER)`); err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	if _, err = statement.Exec(); err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	if statement, err = database.Prepare(`CREATE INDEX IF NOT EXISTS URLIndex ON Requests(URL);`); err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	if _, err = statement.Exec(); err != nil {
-		log.Fatalf("%v", err)
-	}
-
+func sqlite3Handler(articleRepo articles.ArticleRepository, diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequest) {
 	go func() {
 
 		for {
 			timer := time.NewTimer(rescanInterval * time.Second)
 
-			var rows *sql.Rows
-			if rows, err = database.Query(`
-		SELECT URL, ChatID, MessageID
-		FROM Requests
-		WHERE saved == 0
-		`); err != nil {
-				log.Fatalf("%v", err)
+			articles, err := articleRepo.FetchUnsaved()
+			if err != nil {
+				continue
 			}
 
-			var URL string
-			var ChatID int64
-			var MessageID int
-
-			for rows.Next() {
-				if err := rows.Scan(&URL, &ChatID, &MessageID); err != nil {
-					log.Error("Cannot read url from database")
-					continue
-				}
-				log.Infof("Unfinished %s, %d, %d", URL, ChatID, MessageID)
-				reqQueue <- saveURLRequest{URL: URL, ChatID: ChatID, MessageID: MessageID}
+			for _, article := range articles {
+				log.Infof("Unfinished %s, %d, %d", article.URL, article.ChatID, article.MessageID)
+				reqQueue <- saveURLRequest{URL: article.URL, ChatID: article.ChatID, MessageID: article.MessageID}
 			}
 
 			select {
@@ -161,9 +120,7 @@ func sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequ
 				return
 			}
 
-			var count int
-			row := database.QueryRow("SELECT COUNT(*) FROM Requests WHERE URL = ?", r.URL)
-			err := row.Scan(&count)
+			count, err := articleRepo.CountArticleByURL(r.URL)
 
 			if err != nil {
 				log.Errorf("Fail to get count of URL: %v", err)
@@ -177,12 +134,7 @@ func sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequ
 
 			log.Infof("Saving request to disk first: %s, %d, %d", r.URL, r.ChatID, r.MessageID)
 
-			statement, err := database.Prepare("INSERT INTO Requests (URL, ChatID, MessageID, saved) VALUES (?, ?, ?, 0)")
-			if err != nil {
-				log.Errorf("Fail to insert request to SQLite: %v", err)
-				continue
-			}
-			_, err = statement.Exec(r.URL, r.ChatID, r.MessageID)
+			err = articleRepo.Insert(r.URL, r.ChatID, r.MessageID)
 			if err != nil {
 				log.Errorf("Fail to insert request to SQLite: %v", err)
 				continue
@@ -201,9 +153,7 @@ func sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequ
 			}
 			log.Infof("Update URL as saved: %s, %d, %d", r.URL, r.ChatID, r.MessageID)
 
-			var count int
-			row := database.QueryRow("SELECT COUNT(*) FROM Requests WHERE URL = ?", r.URL)
-			err := row.Scan(&count)
+			count, err := articleRepo.CountArticleByURL(r.URL)
 
 			if err != nil {
 				log.Errorf("Fail to get count of URL: %v", err)
@@ -214,12 +164,7 @@ func sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequ
 				log.Errorf("This URL should exist: %s", r.URL)
 			}
 
-			statement, err := database.Prepare("UPDATE Requests SET saved = 1 WHERE URL = ?")
-			if err != nil {
-				log.Errorf("Fail to update request to SQLite: %v", err)
-				continue
-			}
-			_, err = statement.Exec(r.URL)
+			err = articleRepo.Save(r.URL)
 			if err != nil {
 				log.Errorf("Fail to update request to SQLite: %v", err)
 				continue
@@ -266,9 +211,19 @@ func main() {
 		botInfo.Username,
 		botInfo.Password,
 	)
+	var database *sql.DB
+	var err error
+	database, err = sql.Open("sqlite3", "./wallabag.db")
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+	articleRepo, err := articles.NewArticleRepo(database)
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
 
 	wallabagHandler(wallabagClient, reqQueue, diskAckQueue)
-	sqlite3Handler(diskQueue, reqQueue, diskAckQueue, ackQueue)
+	sqlite3Handler(articleRepo, diskQueue, reqQueue, diskAckQueue, ackQueue)
 
 	filterUsers := map[string]bool{}
 	for _, s := range botInfo.FilterUsers {
