@@ -17,11 +17,11 @@ type Worker struct {
 	ar             articles.ArticleRepository
 	rescanInterval time.Duration
 
-	diskQueue    chan saveURLRequest
-	requestQueue chan saveURLRequest
+	diskQueue    chan SaveURLRequest
+	requestQueue chan SaveURLRequest
 }
 
-type saveURLRequest struct {
+type SaveURLRequest struct {
 	URL       string
 	ChatID    int64
 	MessageID int
@@ -33,8 +33,8 @@ func NewWorker(wc Wallabager, ar articles.ArticleRepository, rescanInterval time
 		ar:             ar,
 		rescanInterval: rescanInterval,
 
-		diskQueue:    make(chan saveURLRequest, 100),
-		requestQueue: make(chan saveURLRequest, 100),
+		diskQueue:    make(chan SaveURLRequest, 100),
+		requestQueue: make(chan SaveURLRequest, 100),
 	}
 }
 
@@ -49,7 +49,7 @@ func (w Worker) runQueueToDisk(ctx context.Context) {
 	}
 }
 
-func (w Worker) runQueueToWallabag(ctx context.Context, ackQueue chan saveURLRequest) {
+func (w Worker) runQueueToWallabag(ctx context.Context, ackQueue chan SaveURLRequest) {
 	select {
 	case r := <-w.requestQueue:
 		article, err := w.wc.CreateArticle(r.URL)
@@ -60,7 +60,7 @@ func (w Worker) runQueueToWallabag(ctx context.Context, ackQueue chan saveURLReq
 		if err != nil {
 			break
 		}
-		ackQueue <- saveURLRequest{URL: article.Url, ChatID: r.ChatID, MessageID: r.MessageID}
+		ackQueue <- SaveURLRequest{URL: article.Url, ChatID: r.ChatID, MessageID: r.MessageID}
 		break
 	case <-ctx.Done():
 		return
@@ -77,7 +77,7 @@ func (w Worker) rescanRepository(ctx context.Context) {
 		}
 
 		for _, article := range articles {
-			w.requestQueue <- saveURLRequest{URL: article.URL, ChatID: article.ChatID, MessageID: article.MessageID}
+			w.requestQueue <- SaveURLRequest{URL: article.URL, ChatID: article.ChatID, MessageID: article.MessageID}
 		}
 
 		select {
@@ -89,10 +89,10 @@ func (w Worker) rescanRepository(ctx context.Context) {
 }
 
 func (w Worker) SendToDisk(articleURL string, chatID int64, messageID int64) {
-	w.diskQueue <- saveURLRequest{URL: articleURL, ChatID: chatID, MessageID: int(messageID)}
+	w.diskQueue <- SaveURLRequest{URL: articleURL, ChatID: chatID, MessageID: int(messageID)}
 }
 
-func (w Worker) Start(ctx context.Context, ackQueue chan saveURLRequest) {
+func (w Worker) Start(ctx context.Context, ackQueue chan SaveURLRequest) {
 	go w.runQueueToDisk(ctx)
 	go w.runQueueToWallabag(ctx, ackQueue)
 	go w.rescanRepository(ctx)

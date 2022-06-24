@@ -19,6 +19,7 @@ import (
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/articles"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
+	"github.com/vanadium23/wallabag-telegram-bot/internal/worker"
 )
 
 var log *logrus.Logger
@@ -79,130 +80,11 @@ func (b *BotInfo) readConfig() {
 	}
 }
 
-type saveURLRequest struct {
-	URL       string
-	ChatID    int64
-	MessageID int
-}
-
 const rescanInterval = 3600
-
-func sqlite3Handler(articleRepo articles.ArticleRepository, diskQueue, reqQueue, diskAckQueue, ackQueue chan saveURLRequest) {
-	go func() {
-
-		for {
-			timer := time.NewTimer(rescanInterval * time.Second)
-
-			articles, err := articleRepo.FetchUnsaved()
-			if err != nil {
-				continue
-			}
-
-			for _, article := range articles {
-				log.Infof("Unfinished %s, %d, %d", article.URL, article.ChatID, article.MessageID)
-				reqQueue <- saveURLRequest{URL: article.URL, ChatID: article.ChatID, MessageID: article.MessageID}
-			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-timer.C:
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			var r saveURLRequest
-			select {
-			case r = <-diskQueue:
-			case <-ctx.Done():
-				return
-			}
-
-			count, err := articleRepo.CountArticleByURL(r.URL)
-
-			if err != nil {
-				log.Errorf("Fail to get count of URL: %v", err)
-				continue
-			}
-
-			if count != 0 {
-				log.Infof("Skip existing URL: %s", r.URL)
-				continue
-			}
-
-			log.Infof("Saving request to disk first: %s, %d, %d", r.URL, r.ChatID, r.MessageID)
-
-			err = articleRepo.Insert(r.URL, r.ChatID, r.MessageID)
-			if err != nil {
-				log.Errorf("Fail to insert request to SQLite: %v", err)
-				continue
-			}
-			reqQueue <- r
-		}
-	}()
-
-	go func() {
-		for {
-			var r saveURLRequest
-			select {
-			case r = <-diskAckQueue:
-			case <-ctx.Done():
-				return
-			}
-			log.Infof("Update URL as saved: %s, %d, %d", r.URL, r.ChatID, r.MessageID)
-
-			count, err := articleRepo.CountArticleByURL(r.URL)
-
-			if err != nil {
-				log.Errorf("Fail to get count of URL: %v", err)
-				continue
-			}
-
-			if count == 0 {
-				log.Errorf("This URL should exist: %s", r.URL)
-			}
-
-			err = articleRepo.Save(r.URL)
-			if err != nil {
-				log.Errorf("Fail to update request to SQLite: %v", err)
-				continue
-			}
-			ackQueue <- r
-		}
-	}()
-}
-
-func wallabagHandler(wc wallabag.WallabagClient, reqQueue, diskAckQueue chan saveURLRequest) {
-	go func() {
-		for {
-			var r saveURLRequest
-			select {
-			case r = <-reqQueue:
-			case <-ctx.Done():
-				return
-			}
-			_, err := wc.CreateArticle(r.URL)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			log.Infof("Wallabag says it is saved: %s, %d, %d", r.URL, r.ChatID, r.MessageID)
-			diskAckQueue <- r
-		}
-
-	}()
-}
-
 const timeOut = 60
 
 func main() {
-	diskQueue := make(chan saveURLRequest, 100)
-	reqQueue := make(chan saveURLRequest, 100)
-	diskAckQueue := make(chan saveURLRequest, 100)
-	ackQueue := make(chan saveURLRequest, 100)
+	ackQueue := make(chan worker.SaveURLRequest, 100)
 	wallabagClient := wallabag.NewWallabagClient(
 		http.DefaultClient,
 		fmt.Sprintf("https://%s", botInfo.Site),
@@ -222,8 +104,8 @@ func main() {
 		log.Fatalf("Error opening database: %v", err)
 	}
 
-	wallabagHandler(wallabagClient, reqQueue, diskAckQueue)
-	sqlite3Handler(articleRepo, diskQueue, reqQueue, diskAckQueue, ackQueue)
+	worker := worker.NewWorker(wallabagClient, articleRepo, rescanInterval*time.Second)
+	worker.Start(ctx, ackQueue)
 
 	filterUsers := map[string]bool{}
 	for _, s := range botInfo.FilterUsers {
@@ -284,7 +166,7 @@ func main() {
 
 			for _, r := range rxStrict.FindAllString(update.Message.Text, -1) {
 				log.Infof("Found URL: %s", r)
-				diskQueue <- saveURLRequest{URL: r, ChatID: update.Message.Chat.ID}
+				worker.SendToDisk(r, update.Message.Chat.ID, 0)
 			}
 		}
 

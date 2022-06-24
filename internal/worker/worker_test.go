@@ -23,7 +23,7 @@ func TestWorker(t *testing.T) {
 	articleURL := "test"
 	chatID := int64(1)
 	messageID := int64(2)
-	ackQueue := make(chan saveURLRequest, 1)
+	ackQueue := make(chan SaveURLRequest, 1)
 	ctx := context.Background()
 
 	database, err := sql.Open("sqlite3", ":memory:")
@@ -63,7 +63,7 @@ func TestWorkerRescan(t *testing.T) {
 	articleURL := "test"
 	chatID := int64(1)
 	messageID := int64(2)
-	ackQueue := make(chan saveURLRequest, 1)
+	ackQueue := make(chan SaveURLRequest, 1)
 	ctx := context.Background()
 
 	database, err := sql.Open("sqlite3", ":memory:")
