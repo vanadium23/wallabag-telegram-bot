@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
@@ -32,7 +33,7 @@ func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
 func listenAckQueue(bot *tele.Bot, ackQueue chan worker.SaveURLRequest, ctx context.Context) {
 	select {
 	case ackMsg := <-ackQueue:
-		msg := fmt.Sprintf("Article %s succesfully saved to Wallabag", ackMsg.URL)
+		msg := fmt.Sprintf("Article %s successfully saved to Wallabag", ackMsg.URL)
 		bot.Send(tele.ChatID(ackMsg.ChatID), msg)
 	case <-ctx.Done():
 		return
@@ -76,6 +77,26 @@ func StartTelegramBot(
 		article := articles[rand.Intn(len(articles))]
 		msg := fmt.Sprintf("I've found random article: %s", article.Url)
 		return c.Send(msg)
+	})
+	b.Handle("/recent", func(c tele.Context) error {
+		count := 1
+		args := c.Args()
+		for _, arg := range args {
+			argCount, err := strconv.ParseInt(arg, 0, 64)
+			if err == nil {
+				count = int(argCount)
+			}
+		}
+
+		articles, err := wallabagClient.FetchArticles(1, count, 0)
+		if err != nil {
+			return c.Send("Wallabag failed with error: %v", err)
+		}
+		for i, article := range articles {
+			msg := fmt.Sprintf("%d. %s", i+1, article.Url)
+			c.Send(msg)
+		}
+		return nil
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
 		for _, r := range xurls.Strict.FindAllString(c.Message().Text, -1) {
