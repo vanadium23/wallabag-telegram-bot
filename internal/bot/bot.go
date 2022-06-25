@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
@@ -66,6 +67,15 @@ func StartTelegramBot(
 	// handlers
 	b.Handle("/start", func(c tele.Context) error {
 		return c.Send("Welcome to wallabot. Just send me a string, and I will save it.")
+	})
+	b.Handle("/random", func(c tele.Context) error {
+		articles, err := wallabagClient.FetchArticles(1, 30, 0)
+		if err != nil {
+			return c.Send("Wallabag failed with error: %v", err)
+		}
+		article := articles[rand.Intn(len(articles))]
+		msg := fmt.Sprintf("I've found random article: %s", article.Url)
+		return c.Send(msg)
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
 		for _, r := range xurls.Strict.FindAllString(c.Message().Text, -1) {
