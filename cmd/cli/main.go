@@ -12,12 +12,11 @@ import (
 
 	"github.com/spf13/viper"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	_ "github.com/mattn/go-sqlite3"
 	logrus "github.com/sirupsen/logrus"
-	xurls "mvdan.cc/xurls"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/articles"
+	"github.com/vanadium23/wallabag-telegram-bot/internal/bot"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/worker"
 )
@@ -107,75 +106,20 @@ func main() {
 	worker := worker.NewWorker(wallabagClient, articleRepo, rescanInterval*time.Second)
 	worker.Start(ctx, ackQueue)
 
-	filterUsers := map[string]bool{}
-	for _, s := range botInfo.FilterUsers {
-		filterUsers[s] = true
-	}
+	b := bot.StartTelegramBot(
+		botInfo.Token,
+		timeOut*time.Second,
+		botInfo.FilterUsers,
+		wallabagClient,
+		worker,
+		ackQueue,
+		ctx,
+	)
 
-	bot, err := tgbotapi.NewBotAPI(botInfo.Token)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	bot.Debug = false
-
-	log.Infof("Authorized on account %s", bot.Self.UserName)
-
-	go func() {
-		for {
-			select {
-			case ackMsg := <-ackQueue:
-				log.Info("Sending")
-				msg := tgbotapi.NewMessage(ackMsg.ChatID, ackMsg.URL)
-
-				bot.Send(msg)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	rxStrict := xurls.Strict
-
-	offset := 0
-
-	for {
-		u := tgbotapi.NewUpdate(offset)
-
-		updates, err := bot.GetUpdates(u)
-
-		if err != nil {
-			log.Error(err)
-		}
-
-		timer := time.NewTimer(timeOut * time.Second)
-
-		for _, update := range updates {
-			offset = 1 + update.UpdateID
-
-			if update.Message == nil { // ignore any non-Message Updates
-				continue
-			}
-
-			log.Infof("Telegram received: %s", update.Message.Text)
-
-			if _, ok := filterUsers[update.Message.From.UserName]; !ok {
-				log.Infof("Telegram discards as it is from user: %s", update.Message.From.UserName)
-				continue
-			}
-
-			for _, r := range rxStrict.FindAllString(update.Message.Text, -1) {
-				log.Infof("Found URL: %s", r)
-				worker.SendToDisk(r, update.Message.Chat.ID, 0)
-			}
-		}
-
-		select {
-		case <-signalCh:
-			cancel()
-			os.Exit(0)
-		case <-timer.C:
-			break
-		}
+	select {
+	case <-signalCh:
+		b.Stop()
+		cancel()
+		os.Exit(0)
 	}
 }

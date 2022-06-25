@@ -3,9 +3,10 @@ module github.com/vanadium23/wallabag-telegram-bot
 go 1.18
 
 require (
-	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible
 	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/sirupsen/logrus v1.8.1
+	github.com/spf13/viper v1.12.0
+	gopkg.in/telebot.v3 v3.0.0
 	mvdan.cc/xurls v1.1.0
 )
 
@@ -21,9 +22,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.12.0 // indirect
 	github.com/subosito/gotenv v1.3.0 // indirect
-	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
