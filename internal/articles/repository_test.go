@@ -7,14 +7,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-/*
-Что мне надо от репозитория?
-1. инициализация схемы
-2. запись одной статьи
-3. чтение всех статей в интервале
-4. обновление одной записи
-*/
-
 func TestArticleRepository(t *testing.T) {
 	articleURL := "test"
 	chatID := int64(1)
