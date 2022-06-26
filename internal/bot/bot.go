@@ -15,6 +15,8 @@ import (
 	"mvdan.cc/xurls"
 )
 
+const archiveText = "archive"
+
 func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
 	allowedUsers := map[string]bool{}
 	for _, s := range filterUsers {
@@ -38,6 +40,22 @@ func listenAckQueue(bot *tele.Bot, ackQueue chan worker.SaveURLRequest, ctx cont
 	case <-ctx.Done():
 		return
 	}
+}
+
+// formCallbackQuery generates same string as InlineButton.CallbackUnique from telebot
+func formCallbackQuery(text string) string {
+	return "\f" + text
+}
+
+func formInlineButtons(entryID int) *tele.ReplyMarkup {
+	// buttons
+	entry := strconv.Itoa(entryID)
+	selector := &tele.ReplyMarkup{}
+	btnArchive := selector.Data("✅", archiveText, entry)
+	selector.Inline(
+		selector.Row(btnArchive),
+	)
+	return selector
 }
 
 func StartTelegramBot(
@@ -76,7 +94,7 @@ func StartTelegramBot(
 		}
 		article := articles[rand.Intn(len(articles))]
 		msg := fmt.Sprintf("I've found random article: %s", article.Url)
-		return c.Send(msg)
+		return c.Send(msg, formInlineButtons(article.ID))
 	})
 	b.Handle("/recent", func(c tele.Context) error {
 		count := 1
@@ -94,9 +112,29 @@ func StartTelegramBot(
 		}
 		for i, article := range articles {
 			msg := fmt.Sprintf("%d. %s", i+1, article.Url)
-			c.Send(msg)
+			c.Send(msg, formInlineButtons(article.ID))
 		}
 		return nil
+	})
+	b.Handle(formCallbackQuery(archiveText), func(c tele.Context) error {
+		entryID, err := strconv.ParseInt(c.Callback().Data, 10, 64)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during archiving entry: %v", err),
+			})
+		}
+		err = wallabagClient.UpdateArticle(int(entryID), 1)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during archiving entry: %v", err),
+			})
+		}
+		return c.Respond(&tele.CallbackResponse{
+			CallbackID: c.Callback().ID,
+			Text:       "Entry was successfully archived",
+		})
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
 		for _, r := range xurls.Strict.FindAllString(c.Message().Text, -1) {

@@ -67,7 +67,69 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 		t.Errorf("Unexpected error during %s", err)
 	}
 	if article.Url != articleURL {
-		t.Errorf("Unexpected response %s", article)
+		t.Errorf("Unexpected response %s", article.Url)
+	}
+}
+
+func TestWallabagClientUpdateArticle(t *testing.T) {
+	ClientID := "app_xxx"
+	ClientSecret := "secret_xxx"
+	Username := "unit"
+	Password := "password"
+	AccessToken := "access_token"
+
+	entryID := 1000
+	archive := 0
+
+	// Start a local HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		path := req.URL.Path
+		updatePath := fmt.Sprintf("/api/entries/%d.json", entryID)
+		switch path {
+		case updatePath:
+			var data WallabagUpdateEntryData
+			bearer := req.Header.Get("Authorization")
+			if bearer != fmt.Sprintf("Bearer %s", AccessToken) {
+				http.Error(rw, "Unauthorized", http.StatusUnauthorized)
+				t.Errorf("No bearer token in request")
+				return
+			}
+
+			err := json.NewDecoder(req.Body).Decode(&data)
+			if err != nil {
+				http.Error(rw, err.Error(), http.StatusBadRequest)
+				return
+			}
+			if data.Archive != archive {
+				t.Errorf("Wrong update come to server")
+			}
+
+			rw.Write([]byte(""))
+		case "/oauth/v2/token":
+			data := WallabagOauthToken{
+				AccessToken: "access_token",
+				ExpiresIn:   24 * 60 * 60,
+			}
+			response, _ := json.Marshal(data)
+			rw.Write(response)
+		default:
+			t.Errorf("Incorrect path %s", path)
+		}
+	}))
+	// Close the server when test finishes
+	defer server.Close()
+
+	wallabagClient := NewWallabagClient(
+		server.Client(),
+		server.URL,
+		ClientID,
+		ClientSecret,
+		Username,
+		Password,
+	)
+	err := wallabagClient.UpdateArticle(entryID, archive)
+	if err != nil {
+		t.Errorf("Unexpected error during %s", err)
 	}
 }
 
