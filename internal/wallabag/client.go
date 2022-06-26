@@ -25,6 +25,10 @@ type WallabagEntryResponse struct {
 	Data WallabagEntryResponseItems `json:"_embedded"`
 }
 
+type WallabagUpdateEntryData struct {
+	Archive int `json:"archive"`
+}
+
 type WallabagClient struct {
 	client  *http.Client
 	baseURL string
@@ -140,4 +144,31 @@ func (wc WallabagClient) FetchArticles(page int, perPage int, archive int) ([]Wa
 		return nil, err
 	}
 	return response.Data.Entries, err
+}
+
+func (wc WallabagClient) UpdateArticle(entryID int, archive int) error {
+	updateEntry := WallabagUpdateEntryData{
+		Archive: archive,
+	}
+	url := fmt.Sprintf("%s/api/entries/%d.json", wc.baseURL, entryID)
+	data, _ := json.Marshal(updateEntry)
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	accessToken, err := wc.fetchAccessToken()
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	_, err = wc.client.Do(req)
+	if err != nil {
+		return err
+	}
+	return nil
 }
