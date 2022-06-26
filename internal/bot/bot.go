@@ -15,7 +15,10 @@ import (
 	"mvdan.cc/xurls"
 )
 
-const archiveText = "archive"
+const (
+	archiveText   = "archive"
+	unarchiveText = "unarchive"
+)
 
 func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
 	allowedUsers := map[string]bool{}
@@ -47,13 +50,18 @@ func formCallbackQuery(text string) string {
 	return "\f" + text
 }
 
-func formInlineButtons(entryID int) *tele.ReplyMarkup {
+func formInlineButtons(entryID int, archive bool) *tele.ReplyMarkup {
 	// buttons
 	entry := strconv.Itoa(entryID)
 	selector := &tele.ReplyMarkup{}
-	btnArchive := selector.Data("✅", archiveText, entry)
+	btn := tele.Btn{}
+	if archive {
+		btn = selector.Data("✅", archiveText, entry)
+	} else {
+		btn = selector.Data("📥", unarchiveText, entry)
+	}
 	selector.Inline(
-		selector.Row(btnArchive),
+		selector.Row(btn),
 	)
 	return selector
 }
@@ -94,7 +102,7 @@ func StartTelegramBot(
 		}
 		article := articles[rand.Intn(len(articles))]
 		msg := fmt.Sprintf("I've found random article: %s", article.Url)
-		return c.Send(msg, formInlineButtons(article.ID))
+		return c.Send(msg, formInlineButtons(article.ID, true))
 	})
 	b.Handle("/recent", func(c tele.Context) error {
 		count := 1
@@ -112,7 +120,7 @@ func StartTelegramBot(
 		}
 		for i, article := range articles {
 			msg := fmt.Sprintf("%d. %s", i+1, article.Url)
-			c.Send(msg, formInlineButtons(article.ID))
+			c.Send(msg, formInlineButtons(article.ID, true))
 		}
 		return nil
 	})
@@ -131,9 +139,31 @@ func StartTelegramBot(
 				Text:       fmt.Sprintf("Error during archiving entry: %v", err),
 			})
 		}
+		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formInlineButtons(int(entryID), false))
 		return c.Respond(&tele.CallbackResponse{
 			CallbackID: c.Callback().ID,
 			Text:       "Entry was successfully archived",
+		})
+	})
+	b.Handle(formCallbackQuery(unarchiveText), func(c tele.Context) error {
+		entryID, err := strconv.ParseInt(c.Callback().Data, 10, 64)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+			})
+		}
+		err = wallabagClient.UpdateArticle(int(entryID), 0)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+			})
+		}
+		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formInlineButtons(int(entryID), true))
+		return c.Respond(&tele.CallbackResponse{
+			CallbackID: c.Callback().ID,
+			Text:       "Entry was successfully saved back.",
 		})
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
