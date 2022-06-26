@@ -67,7 +67,7 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 		t.Errorf("Unexpected error during %s", err)
 	}
 	if article.Url != articleURL {
-		t.Errorf("Unexpected response %s", article)
+		t.Errorf("Unexpected response %s", article.Url)
 	}
 }
 

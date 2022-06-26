@@ -10,6 +10,7 @@ import (
 
 type WallabagEntry struct {
 	Url string `json:"url"`
+	ID  int    `json:"id,omitempty"`
 }
 
 type WallabagOauthToken struct {
