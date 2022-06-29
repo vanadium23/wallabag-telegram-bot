@@ -152,7 +152,6 @@ func StartTelegramBot(
 	b.Handle(tele.OnText, func(c tele.Context) error {
 		c.Send("Received message, finding articles and try to save")
 		for _, r := range xurls.Strict.FindAllString(c.Message().Text, -1) {
-			// TODO: fix messageID
 			entry, err := wallabagClient.CreateArticle(r)
 			if err != nil {
 				c.Send(fmt.Sprintf("Found article %s, but save failed with err: %v", r, err))
@@ -163,6 +162,5 @@ func StartTelegramBot(
 		return nil
 	})
 
-	// start bot
 	return b
 }

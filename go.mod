@@ -3,7 +3,6 @@ module github.com/vanadium23/wallabag-telegram-bot
 go 1.18
 
 require (
-	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.12.0
 	gopkg.in/telebot.v3 v3.0.0
