@@ -11,6 +11,8 @@ require (
 )
 
 require (
+	github.com/Strubbl/wallabago v6.0.0+incompatible // indirect
+	github.com/Strubbl/wallabago/v7 v7.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
