@@ -98,7 +98,6 @@ func main() {
 		log.Fatalf("Error found while reading config: %v", err)
 	}
 
-	// сделать логирование на стандартной библиотеке
 	wallabagClient := wallabag.NewWallabagClient(
 		http.DefaultClient,
 		config.WallabagSite,
@@ -113,5 +112,7 @@ func main() {
 		config.TelegramAllowedUsers,
 		wallabagClient,
 	)
-	b.Start()
+	if b != nil {
+		b.Start()
+	}
 }
