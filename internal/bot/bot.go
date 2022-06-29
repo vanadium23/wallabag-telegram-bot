@@ -17,6 +17,14 @@ const (
 	unarchiveText = "unarchive"
 )
 
+const entryMessageTemplates = `
+%s.
+
+%s
+
+📅 %s ⏳ %d min
+`
+
 func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
 	allowedUsers := map[string]bool{}
 	for _, s := range filterUsers {
@@ -53,6 +61,15 @@ func formInlineButtons(entryID int, archive bool) *tele.ReplyMarkup {
 	return selector
 }
 
+func formatArticleMessage(message string, entry wallabag.WallabagEntry) string {
+	return fmt.Sprintf(entryMessageTemplates,
+		message,
+		entry.Url,
+		entry.CreatedAt.Format("2006-01-02"),
+		entry.ReadingTime,
+	)
+}
+
 func StartTelegramBot(
 	telegramBotToken string,
 	pollInterval time.Duration,
@@ -84,8 +101,8 @@ func StartTelegramBot(
 			return c.Send("Wallabag failed with error: %v", err)
 		}
 		article := articles[rand.Intn(len(articles))]
-		msg := fmt.Sprintf("I've found random article: %s", article.Url)
-		return c.Send(msg, formInlineButtons(article.ID, true))
+		message := "I've found random article"
+		return c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, true))
 	})
 	b.Handle("/recent", func(c tele.Context) error {
 		count := 1
@@ -102,8 +119,8 @@ func StartTelegramBot(
 			return c.Send("Wallabag failed with error: %v", err)
 		}
 		for i, article := range articles {
-			msg := fmt.Sprintf("%d. %s", i+1, article.Url)
-			c.Send(msg, formInlineButtons(article.ID, true))
+			message := fmt.Sprintf("Recent article №%d", i+1)
+			c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, true))
 		}
 		return nil
 	})
@@ -157,7 +174,8 @@ func StartTelegramBot(
 				c.Send(fmt.Sprintf("Found article %s, but save failed with err: %v", r, err))
 				continue
 			}
-			c.Send(fmt.Sprintf("Found article %s and successfully saved with id: %d", entry.Url, entry.ID))
+			message := fmt.Sprintf("Found article %s and successfully saved with id: %d", entry.Url, entry.ID)
+			c.Send(formatArticleMessage(message, entry))
 		}
 		return nil
 	})

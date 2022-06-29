@@ -5,12 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
 type WallabagEntry struct {
-	Url string `json:"url"`
-	ID  int    `json:"id,omitempty"`
+	Url         string        `json:"url"`
+	ID          int           `json:"id,omitempty"`
+	CreatedAt   *WallabagTime `json:"created_at"`
+	Content     string        `json:"content"`
+	Title       string        `json:"title"`
+	ReadingTime int           `json:"reading_time"`
 }
 
 type WallabagOauthToken struct {
@@ -28,6 +33,30 @@ type WallabagEntryResponse struct {
 
 type WallabagUpdateEntryData struct {
 	Archive int `json:"archive"`
+}
+
+// WallabagTimeLayout is a variation of RFC3339 but without colons in
+// the timezone delimiter, breaking the RFC
+const WallabagTimeLayout = "2006-01-02T15:04:05-0700"
+
+// WallabagTime overrides builtin time to allow for custom time parsing
+type WallabagTime struct {
+	time.Time
+}
+
+// UnmarshalJSON parses the custom date format wallabag returns
+func (t *WallabagTime) UnmarshalJSON(buf []byte) (err error) {
+	s := strings.Trim(string(buf), `"`)
+	if s == "null" {
+		t.Time = time.Time{}
+		return err
+	}
+	t.Time, err = time.Parse(WallabagTimeLayout, s)
+	if err != nil {
+		t.Time = time.Time{}
+		return err
+	}
+	return err
 }
 
 type WallabagClient struct {
