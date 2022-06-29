@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -9,9 +8,7 @@ import (
 	"time"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
-	"github.com/vanadium23/wallabag-telegram-bot/internal/worker"
 	tele "gopkg.in/telebot.v3"
-	"gopkg.in/telebot.v3/middleware"
 	"mvdan.cc/xurls"
 )
 
@@ -32,16 +29,6 @@ func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
 			}
 			return next(c)
 		}
-	}
-}
-
-func listenAckQueue(bot *tele.Bot, ackQueue chan worker.SaveURLRequest, ctx context.Context) {
-	select {
-	case ackMsg := <-ackQueue:
-		msg := fmt.Sprintf("Article %s successfully saved to Wallabag", ackMsg.URL)
-		bot.Send(tele.ChatID(ackMsg.ChatID), msg)
-	case <-ctx.Done():
-		return
 	}
 }
 
@@ -72,9 +59,6 @@ func StartTelegramBot(
 	filterUsers []string,
 	// for handlers
 	wallabagClient wallabag.WallabagClient,
-	worker worker.Worker,
-	ackQueue chan worker.SaveURLRequest,
-	ctx context.Context,
 ) *tele.Bot {
 	pref := tele.Settings{
 		Token:  telegramBotToken,
@@ -88,7 +72,6 @@ func StartTelegramBot(
 	}
 
 	// use logger
-	b.Use(middleware.Logger())
 	b.Use(middlewareFilterUser(filterUsers))
 
 	// handlers
@@ -167,15 +150,19 @@ func StartTelegramBot(
 		})
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
+		c.Send("Received message, finding articles and try to save")
 		for _, r := range xurls.Strict.FindAllString(c.Message().Text, -1) {
 			// TODO: fix messageID
-			worker.SendToDisk(r, c.Chat().ID, 0)
+			entry, err := wallabagClient.CreateArticle(r)
+			if err != nil {
+				c.Send(fmt.Sprintf("Found article %s, but save failed with err: %v", r, err))
+				continue
+			}
+			c.Send(fmt.Sprintf("Found article %s and successfully saved with id: %d", entry.Url, entry.ID))
 		}
-		return c.Send("Received article, now saving")
+		return nil
 	})
 
 	// start bot
-	go listenAckQueue(b, ackQueue, ctx)
-	go b.Start()
 	return b
 }

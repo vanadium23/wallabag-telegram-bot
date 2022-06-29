@@ -1,13 +1,9 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/spf13/viper"
@@ -15,16 +11,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	logrus "github.com/sirupsen/logrus"
 
-	"github.com/vanadium23/wallabag-telegram-bot/internal/articles"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/bot"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
-	"github.com/vanadium23/wallabag-telegram-bot/internal/worker"
 )
 
 var log *logrus.Logger
-var signalCh chan os.Signal
-var ctx context.Context
-var cancel context.CancelFunc
 
 func init() {
 	log = logrus.New()
@@ -33,13 +24,6 @@ func init() {
 	botInfo.readConfig()
 
 	log.Info("Init")
-
-	signalCh = make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt,
-		syscall.SIGINT,
-		syscall.SIGTERM)
-
-	ctx, cancel = context.WithCancel(context.Background())
 }
 
 type BotInfo struct {
@@ -79,11 +63,9 @@ func (b *BotInfo) readConfig() {
 	}
 }
 
-const rescanInterval = 3600
 const timeOut = 60
 
 func main() {
-	ackQueue := make(chan worker.SaveURLRequest, 100)
 	wallabagClient := wallabag.NewWallabagClient(
 		http.DefaultClient,
 		fmt.Sprintf("https://%s", botInfo.Site),
@@ -92,34 +74,11 @@ func main() {
 		botInfo.Username,
 		botInfo.Password,
 	)
-	var database *sql.DB
-	var err error
-	database, err = sql.Open("sqlite3", "./wallabag.db")
-	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
-	}
-	articleRepo, err := articles.NewArticleRepo(database)
-	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
-	}
-
-	worker := worker.NewWorker(wallabagClient, articleRepo, rescanInterval*time.Second)
-	worker.Start(ctx, ackQueue)
-
 	b := bot.StartTelegramBot(
 		botInfo.Token,
 		timeOut*time.Second,
 		botInfo.FilterUsers,
 		wallabagClient,
-		worker,
-		ackQueue,
-		ctx,
 	)
-
-	select {
-	case <-signalCh:
-		b.Stop()
-		cancel()
-		os.Exit(0)
-	}
+	b.Start()
 }
