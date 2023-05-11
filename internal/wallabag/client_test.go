@@ -61,6 +61,7 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 		ClientSecret,
 		Username,
 		Password,
+		"source:wallabag",
 	)
 	article, err := wallabagClient.CreateArticle(articleURL)
 	if err != nil {
@@ -68,6 +69,9 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 	}
 	if article.Url != articleURL {
 		t.Errorf("Unexpected response %s", article.Url)
+	}
+	if article.Tags != "source:wallabag" {
+		t.Errorf("Unexpected response %s", article.Tags)
 	}
 }
 
@@ -126,6 +130,7 @@ func TestWallabagClientUpdateArticle(t *testing.T) {
 		ClientSecret,
 		Username,
 		Password,
+		"",
 	)
 	err := wallabagClient.UpdateArticle(entryID, archive)
 	if err != nil {
@@ -203,6 +208,7 @@ func TestWallabagClientFetchArticles(t *testing.T) {
 		ClientSecret,
 		Username,
 		Password,
+		"",
 	)
 	articles, err := wallabagClient.FetchArticles(page, perPage, archive)
 	if err != nil {

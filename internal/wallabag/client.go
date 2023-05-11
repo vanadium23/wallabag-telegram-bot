@@ -16,6 +16,7 @@ type WallabagEntry struct {
 	Content     string        `json:"content"`
 	Title       string        `json:"title"`
 	ReadingTime int           `json:"reading_time"`
+	Tags        string        `json:"tags"`
 }
 
 type WallabagOauthToken struct {
@@ -60,8 +61,9 @@ func (t *WallabagTime) UnmarshalJSON(buf []byte) (err error) {
 }
 
 type WallabagClient struct {
-	client  *http.Client
-	baseURL string
+	client      *http.Client
+	baseURL     string
+	defaultTags string
 
 	// oAuth params
 	clientID     string
@@ -81,6 +83,7 @@ func NewWallabagClient(
 	clientSecret string,
 	username string,
 	password string,
+	defaultTags string,
 ) WallabagClient {
 	return WallabagClient{
 		client:             client,
@@ -90,6 +93,7 @@ func NewWallabagClient(
 		username:           username,
 		password:           password,
 		accessTokenExpires: time.Now(),
+		defaultTags:        defaultTags,
 	}
 }
 
@@ -117,7 +121,8 @@ func (wc WallabagClient) CreateArticle(articleURL string) (WallabagEntry, error)
 	var createdEntry WallabagEntry
 
 	newEntry := WallabagEntry{
-		Url: articleURL,
+		Url:  articleURL,
+		Tags: wc.defaultTags,
 	}
 	data, _ := json.Marshal(newEntry)
 	req, err := http.NewRequest("POST", wc.baseURL+"/api/entries.json", bytes.NewBuffer(data))
