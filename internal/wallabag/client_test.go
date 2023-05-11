@@ -11,6 +11,7 @@ import (
 
 func TestWallabagClientCreateArticle(t *testing.T) {
 	articleURL := "test"
+	articleTags := "source:wallabag"
 	ClientID := "app_xxx"
 	ClientSecret := "secret_xxx"
 	Username := "unit"
@@ -22,7 +23,7 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 		path := req.URL.Path
 		switch path {
 		case "/api/entries.json":
-			var data WallabagEntry
+			var data WallabagCreateEntry
 			bearer := req.Header.Get("Authorization")
 			if bearer != fmt.Sprintf("Bearer %s", AccessToken) {
 				http.Error(rw, "Unauthorized", http.StatusUnauthorized)
@@ -37,6 +38,9 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 			}
 			if data.Url != articleURL {
 				t.Errorf("Provided article is not equal %s == %s", data.Url, articleURL)
+			}
+			if data.Tags != articleTags {
+				t.Errorf("Provided tags are not equal %s == %s", data.Tags, articleTags)
 			}
 			response, _ := json.Marshal(data)
 			rw.Write(response)
@@ -61,6 +65,7 @@ func TestWallabagClientCreateArticle(t *testing.T) {
 		ClientSecret,
 		Username,
 		Password,
+		"source:wallabag",
 	)
 	article, err := wallabagClient.CreateArticle(articleURL)
 	if err != nil {
@@ -126,6 +131,7 @@ func TestWallabagClientUpdateArticle(t *testing.T) {
 		ClientSecret,
 		Username,
 		Password,
+		"",
 	)
 	err := wallabagClient.UpdateArticle(entryID, archive)
 	if err != nil {
@@ -203,6 +209,7 @@ func TestWallabagClientFetchArticles(t *testing.T) {
 		ClientSecret,
 		Username,
 		Password,
+		"",
 	)
 	articles, err := wallabagClient.FetchArticles(page, perPage, archive)
 	if err != nil {

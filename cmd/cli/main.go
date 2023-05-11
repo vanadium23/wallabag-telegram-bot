@@ -23,6 +23,7 @@ type WallabagTelegramConfig struct {
 	WallabagClientSecret string   `json:"client_secret"`
 	WallabagUsername     string   `json:"username"`
 	WallabagPassword     string   `json:"password"`
+	WallabagDefaultTags  string   `json:"default_tags"`
 	TelegramAllowedUsers []string `json:"filter_users"`
 }
 
@@ -74,6 +75,7 @@ func readConfig() (WallabagTelegramConfig, error) {
 	}
 
 	FilterUsers := viper.GetStringSlice("filter_users")
+	DefaultTags := viper.GetString("default_tags")
 
 	return WallabagTelegramConfig{
 		TelegramToken:        Token,
@@ -82,6 +84,7 @@ func readConfig() (WallabagTelegramConfig, error) {
 		WallabagClientSecret: ClientSecret,
 		WallabagUsername:     Username,
 		WallabagPassword:     Password,
+		WallabagDefaultTags:  DefaultTags,
 		TelegramAllowedUsers: FilterUsers,
 	}, nil
 }
@@ -105,6 +108,7 @@ func main() {
 		config.WallabagClientSecret,
 		config.WallabagUsername,
 		config.WallabagPassword,
+		config.WallabagDefaultTags,
 	)
 	b := bot.StartTelegramBot(
 		config.TelegramToken,
