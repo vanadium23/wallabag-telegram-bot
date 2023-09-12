@@ -211,3 +211,33 @@ func (wc WallabagClient) UpdateArticle(entryID int, archive int) error {
 	}
 	return nil
 }
+
+func (wc WallabagClient) AddTagsToArticle(entryID int, tags []string) error {
+	data := map[string]string{
+		"tags": strings.Join(tags, ","),
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/api/entries/%d/tags.json", wc.baseURL, entryID)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	accessToken, err := wc.fetchAccessToken()
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	_, err = wc.client.Do(req)
+	if err != nil {
+		return err
+	}
+	return nil
+}

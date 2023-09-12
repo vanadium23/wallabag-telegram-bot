@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/vanadium23/wallabag-telegram-bot/internal/tagging"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
 	tele "gopkg.in/telebot.v3"
 	"mvdan.cc/xurls"
@@ -76,6 +77,7 @@ func StartTelegramBot(
 	filterUsers []string,
 	// for handlers
 	wallabagClient wallabag.WallabagClient,
+	tagger tagging.Tagger,
 ) *tele.Bot {
 	pref := tele.Settings{
 		Token:  telegramBotToken,
@@ -174,7 +176,14 @@ func StartTelegramBot(
 				c.Send(fmt.Sprintf("Found article %s, but save failed with err: %v", r, err))
 				continue
 			}
-			message := fmt.Sprintf("Found article %s and successfully saved with id: %d", entry.Url, entry.ID)
+			tags, err := tagger.GuessTags(entry.Title, entry.Content)
+			if err != nil {
+				log.Printf("error on tagging: %v\n", err)
+			}
+			if tags != nil {
+				go wallabagClient.AddTagsToArticle(entry.ID, tags)
+			}
+			message := fmt.Sprintf("Found article %s and successfully saved with id: %d. Suggested tags: %v", entry.Url, entry.ID, tags)
 			c.Send(formatArticleMessage(message, entry))
 		}
 		return nil

@@ -13,6 +13,7 @@ import (
 	logrus "github.com/sirupsen/logrus"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/bot"
+	"github.com/vanadium23/wallabag-telegram-bot/internal/tagging"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
 )
 
@@ -25,6 +26,7 @@ type WallabagTelegramConfig struct {
 	WallabagPassword     string   `json:"password"`
 	WallabagDefaultTags  string   `json:"default_tags"`
 	TelegramAllowedUsers []string `json:"filter_users"`
+	OpenAISecretKey      string   `json:"open_ai_secret_key"`
 }
 
 func readConfig() (WallabagTelegramConfig, error) {
@@ -76,6 +78,7 @@ func readConfig() (WallabagTelegramConfig, error) {
 
 	FilterUsers := viper.GetStringSlice("filter_users")
 	DefaultTags := viper.GetString("default_tags")
+	OpenAISecretKey := viper.GetString("openai_secret_key")
 
 	return WallabagTelegramConfig{
 		TelegramToken:        Token,
@@ -86,6 +89,7 @@ func readConfig() (WallabagTelegramConfig, error) {
 		WallabagPassword:     Password,
 		WallabagDefaultTags:  DefaultTags,
 		TelegramAllowedUsers: FilterUsers,
+		OpenAISecretKey:      OpenAISecretKey,
 	}, nil
 }
 
@@ -110,11 +114,13 @@ func main() {
 		config.WallabagPassword,
 		config.WallabagDefaultTags,
 	)
+	tagger := tagging.NewTagger(config.OpenAISecretKey)
 	b := bot.StartTelegramBot(
 		config.TelegramToken,
 		timeOut*time.Second,
 		config.TelegramAllowedUsers,
 		wallabagClient,
+		tagger,
 	)
 	if b != nil {
 		b.Start()
