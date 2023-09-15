@@ -61,8 +61,9 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 }
 
 const promptFormat = `
-You need to tag an article by content. Tag is a lowercase string.
-Provide no more than 3 tags. You need to respond with valid json array.
+You response need to contain only valid json array.
+Generate three hierarchical tags based on the title and content of a given article, primarily in the fields of technology, management, or science. Each tag should preferably be a lowercase English noun consisting of one word, although two-word noun phrases are acceptable. The first tag should capture the most specific aspect of the article, the second tag should be slightly more general, and the third tag should encapsulate the broadest category the article falls under. 
+Articles in Russian should also be tagged in English.
 
 Title: %s
 
