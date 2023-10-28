@@ -62,12 +62,16 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 }
 
 const promptFormat = `
-Generate a JSON array containing three hierarchical tags for a given article, primarily from the fields of technology, management, or science. Each tag should preferably be a lowercase English noun consisting of one word, though two-word noun phrases are acceptable. The tags should adhere to the following criteria:
+Your task is to analyze the title and content of a given article, primarily from the fields of technology, management, or science, and generate a valid JSON array containing three hierarchical tags. Follow these guidelines for the tags:
 1. The first tag pinpoints the article's most specific aspect.
 2. The second tag broadens the scope slightly.
 3. The third tag denotes the widest category that encompasses the article.
-4. Tags must not replicate words from the article's title or content, except for words universally recognized within the domain or established ontologies.
-5. Regardless of the article's original language, all tags should be in English.
+4. Avoid using words directly from the article's title or content, except for those universally recognized within the domain or part of established ontologies.
+4. All tags must be in English, even for articles originally in Russian or any other language.
+
+Ensure the output is a valid JSON array of strings, not an array of objects. Each string is a single tag.
+Example Correct Response Format:
+["performance", "measurements", "technology"]
 
 Title: %s
 
