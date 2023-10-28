@@ -50,6 +50,7 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 	}
 
 	dataJson := resp.Choices[0].Message.Content
+	fmt.Printf("ChatCompletion response: %s\n", dataJson)
 	var tags []string
 	err = json.Unmarshal([]byte(dataJson), &tags)
 
