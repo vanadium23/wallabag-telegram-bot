@@ -75,7 +75,8 @@ Your task is to analyze the title and content of a given article, primarily from
 2. The second tag broadens the scope slightly.
 3. The third tag denotes the widest category that encompasses the article. It must be one of the following phrases: programming, software engineering, infrastructure, management, science, business, productivity, fun.
 4. Avoid using words directly from the article's title or content, except for those universally recognized within the domain or part of established ontologies.
-4. All tags must be in English, even for articles originally in Russian or any other language.
+5. All tags must be in English, even for articles originally in Russian or any other language.
+6. All tags must be in lowercase.
 
 Ensure the output is a valid JSON array of strings, not an array of objects. Each string is a single tag.
 Example Correct Response Format:
