@@ -34,11 +34,19 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 	resp, err := tagger.cl.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
+			Model: openai.GPT4,
 			Messages: []openai.ChatCompletionMessage{
 				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: taggingPrompt,
+				},
+				{
 					Role:    openai.ChatMessageRoleUser,
-					Content: fmt.Sprintf(promptFormat, title, content[:cut]),
+					Content: fmt.Sprintf("Title: %s", title),
+				},
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: fmt.Sprintf("Content of article: %s", content[:cut]),
 				},
 			},
 		},
@@ -61,20 +69,15 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 	return tags, nil
 }
 
-const promptFormat = `
+const taggingPrompt = `
 Your task is to analyze the title and content of a given article, primarily from the fields of technology, management, or science, and generate a valid JSON array containing three hierarchical tags. Follow these guidelines for the tags:
 1. The first tag pinpoints the article's most specific aspect.
 2. The second tag broadens the scope slightly.
-3. The third tag denotes the widest category that encompasses the article.
+3. The third tag denotes the widest category that encompasses the article. It must be one of the following phrases: programming, software engineering, infrastructure, management, science, business, productivity, fun.
 4. Avoid using words directly from the article's title or content, except for those universally recognized within the domain or part of established ontologies.
 4. All tags must be in English, even for articles originally in Russian or any other language.
 
 Ensure the output is a valid JSON array of strings, not an array of objects. Each string is a single tag.
 Example Correct Response Format:
 ["performance", "measurements", "technology"]
-
-Title: %s
-
-Content:
-%s
 `
