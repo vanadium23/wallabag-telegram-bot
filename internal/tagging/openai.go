@@ -26,10 +26,9 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 	if content == "" {
 		return nil, errors.New("no content -> no tags")
 	}
-	// cut content till 1000 symbols
 	cut := len(content)
-	if cut > 1024 {
-		cut = 1024
+	if cut > 4096 {
+		cut = 4096
 	}
 	resp, err := tagger.cl.CreateChatCompletion(
 		context.Background(),
