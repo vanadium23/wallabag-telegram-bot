@@ -65,6 +65,7 @@ func (tagger OpenaiTagger) GuessTags(title, content string) ([]string, error) {
 		return nil, err
 	}
 
+	tags = append(tags, "autotag")
 	return tags, nil
 }
 
