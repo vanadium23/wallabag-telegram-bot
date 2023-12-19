@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ type WallabagTelegramConfig struct {
 	WallabagDefaultTags  string   `json:"default_tags"`
 	TelegramAllowedUsers []string `json:"filter_users"`
 	OpenAISecretKey      string   `json:"open_ai_secret_key"`
+	OpenAIProxyUrl       *url.URL `json:"open_ai_proxy_url"`
 }
 
 func readConfig() (WallabagTelegramConfig, error) {
@@ -80,6 +82,16 @@ func readConfig() (WallabagTelegramConfig, error) {
 	DefaultTags := viper.GetString("default_tags")
 	OpenAISecretKey := viper.GetString("openai_secret_key")
 
+	OpenAIProxyString := viper.GetString("openai_proxy_url")
+	var OpenAIProxyUrl *url.URL
+	if OpenAIProxyString != "" {
+		proxyUrl, err := url.Parse(OpenAIProxyString)
+		if err != nil {
+			return c, errors.Join(errors.New("wrong proxy format"), err)
+		}
+		OpenAIProxyUrl = proxyUrl
+	}
+
 	return WallabagTelegramConfig{
 		TelegramToken:        Token,
 		WallabagSite:         Site,
@@ -90,6 +102,7 @@ func readConfig() (WallabagTelegramConfig, error) {
 		WallabagDefaultTags:  DefaultTags,
 		TelegramAllowedUsers: FilterUsers,
 		OpenAISecretKey:      OpenAISecretKey,
+		OpenAIProxyUrl:       OpenAIProxyUrl,
 	}, nil
 }
 
@@ -114,7 +127,7 @@ func main() {
 		config.WallabagPassword,
 		config.WallabagDefaultTags,
 	)
-	tagger := tagging.NewTagger(config.OpenAISecretKey)
+	tagger := tagging.NewTagger(config.OpenAISecretKey, config.OpenAIProxyUrl)
 	b := bot.StartTelegramBot(
 		config.TelegramToken,
 		timeOut*time.Second,

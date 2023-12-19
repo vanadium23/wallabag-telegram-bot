@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -14,8 +16,19 @@ type OpenaiTagger struct {
 	key string
 }
 
-func NewTagger(openapiApiKey string) OpenaiTagger {
-	client := openai.NewClient(openapiApiKey)
+func NewTagger(openapiApiKey string, proxyUrl *url.URL) OpenaiTagger {
+	config := openai.DefaultConfig(openapiApiKey)
+
+	if proxyUrl != nil {
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyUrl),
+		}
+		config.HTTPClient = &http.Client{
+			Transport: transport,
+		}
+	}
+
+	client := openai.NewClientWithConfig(config)
 	return OpenaiTagger{cl: client, key: openapiApiKey}
 }
 
