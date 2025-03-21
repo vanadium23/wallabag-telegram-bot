@@ -89,9 +89,13 @@ func StartTelegramBot(
 		if err != nil {
 			return c.Send("Wallabag failed with error: %v", err)
 		}
-		article := articles[rand.Intn(len(articles))]
-		message := "I've found random article"
-		return c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, true))
+		count := 5
+		for i := 0; i < count; i++ {
+			article := articles[rand.Intn(len(articles))]
+			message := fmt.Sprintf("Randon article №%d", article.ID)
+			c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, article.IsArchived != 1))
+		}
+		return nil
 	})
 	b.Handle("/recent", func(c tele.Context) error {
 		count := 5
@@ -109,7 +113,7 @@ func StartTelegramBot(
 		}
 		for i, article := range articles {
 			message := fmt.Sprintf("Recent article №%d", i+1)
-			c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, true))
+			c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, article.IsArchived != 1))
 		}
 		return nil
 	})

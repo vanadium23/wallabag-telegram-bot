@@ -21,6 +21,7 @@ type WallabagEntry struct {
 	Content     string        `json:"content"`
 	Title       string        `json:"title"`
 	ReadingTime int           `json:"reading_time"`
+	IsArchived  int           `json:"is_archived"`
 }
 
 type WallabagOauthToken struct {
