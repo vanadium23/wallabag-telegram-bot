@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/tagging"
@@ -16,6 +17,8 @@ import (
 const (
 	archiveText   = "archive"
 	unarchiveText = "unarchive"
+	scrolledText  = "scrolled"
+	rateText      = "rate"
 )
 
 const entryMessageTemplates = `
@@ -44,22 +47,6 @@ func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
 // formCallbackQuery generates same string as InlineButton.CallbackUnique from telebot
 func formCallbackQuery(text string) string {
 	return "\f" + text
-}
-
-func formInlineButtons(entryID int, archive bool) *tele.ReplyMarkup {
-	// buttons
-	entry := strconv.Itoa(entryID)
-	selector := &tele.ReplyMarkup{}
-	btn := tele.Btn{}
-	if archive {
-		btn = selector.Data("✅", archiveText, entry)
-	} else {
-		btn = selector.Data("📥", unarchiveText, entry)
-	}
-	selector.Inline(
-		selector.Row(btn),
-	)
-	return selector
 }
 
 func formatArticleMessage(message string, entry wallabag.WallabagEntry) string {
@@ -107,7 +94,7 @@ func StartTelegramBot(
 		return c.Send(formatArticleMessage(message, article), formInlineButtons(article.ID, true))
 	})
 	b.Handle("/recent", func(c tele.Context) error {
-		count := 1
+		count := 5
 		args := c.Args()
 		for _, arg := range args {
 			argCount, err := strconv.ParseInt(arg, 0, 64)
@@ -166,6 +153,63 @@ func StartTelegramBot(
 		return c.Respond(&tele.CallbackResponse{
 			CallbackID: c.Callback().ID,
 			Text:       "Entry was successfully saved back.",
+		})
+	})
+	b.Handle(formCallbackQuery(scrolledText), func(c tele.Context) error {
+		parts := strings.Split(c.Callback().Data, "|")
+		if len(parts) < 2 {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: wrong callback data"),
+			})
+		}
+		entryID, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+			})
+		}
+		err = wallabagClient.AddTagsToArticle(int(entryID), []string{"scrolled"})
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+			})
+		}
+		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formInlineButtons(int(entryID), parts[1] == "0"))
+		return c.Respond(&tele.CallbackResponse{
+			CallbackID: c.Callback().ID,
+			Text:       "Entry was mark as scrolled.",
+		})
+	})
+	b.Handle(formCallbackQuery(rateText), func(c tele.Context) error {
+		parts := strings.Split(c.Callback().Data, "|")
+		if len(parts) < 2 {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: wrong callback data"),
+			})
+		}
+		entryID, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+			})
+		}
+		ratingTag := parts[1]
+		err = wallabagClient.AddTagsToArticle(int(entryID), []string{ratingTag})
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+			})
+		}
+		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formInlineButtons(int(entryID), parts[2] == "1"))
+		return c.Respond(&tele.CallbackResponse{
+			CallbackID: c.Callback().ID,
+			Text:       fmt.Sprintf("Entry was rated as %s.", ratingTag),
 		})
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
