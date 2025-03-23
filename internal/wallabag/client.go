@@ -14,6 +14,12 @@ type WallabagCreateEntry struct {
 	Tags string `json:"tags"`
 }
 
+type WallabagTag struct {
+	ID    int    `json:"id"`
+	Label string `json:"label"`
+	Slug  string `json:"slug"`
+}
+
 type WallabagEntry struct {
 	Url         string        `json:"url"`
 	ID          int           `json:"id,omitempty"`
@@ -22,6 +28,7 @@ type WallabagEntry struct {
 	Title       string        `json:"title"`
 	ReadingTime int           `json:"reading_time"`
 	IsArchived  int           `json:"is_archived"`
+	Tags        []WallabagTag `json:"tags"`
 }
 
 type WallabagOauthToken struct {
@@ -184,6 +191,34 @@ func (wc WallabagClient) FetchArticles(page int, perPage int, archive int) ([]Wa
 		return nil, err
 	}
 	return response.Data.Entries, err
+}
+
+func (wc WallabagClient) FetchArticle(entryID int) (WallabagEntry, error) {
+	url := fmt.Sprintf("%s/api/entries/%d.json", wc.baseURL, entryID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return WallabagEntry{}, err
+	}
+
+	accessToken, err := wc.fetchAccessToken()
+	if err != nil {
+		return WallabagEntry{}, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	resp, err := wc.client.Do(req)
+	if err != nil {
+		return WallabagEntry{}, err
+	}
+	var response WallabagEntry
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&response)
+
+	return response, nil
 }
 
 func (wc WallabagClient) UpdateArticle(entryID int, archive int) error {

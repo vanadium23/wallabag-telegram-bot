@@ -23,15 +23,11 @@ func formInlineButtons(entryID int, archive bool) *tele.ReplyMarkup {
 	}
 	scrolledButton := selector.Data("📜", scrolledText, entry, archiveText)
 	// rating
-	var EmojiToRating = map[string]string{
-		"😡": "bad",
-		"😕": "normal",
-		"😊": "good",
-		"😎": "great",
-	}
+	var emojis = []string{"😡", "😕", "😊", "😎"}
+	var tags = []string{"bad", "normal", "good", "great"}
 	ratingRow := selector.Row()
-	for emoji, rating := range EmojiToRating {
-		btn := selector.Data(emoji, rateText, entry, rating, archiveText)
+	for i, emoji := range emojis {
+		btn := selector.Data(emoji, rateText, entry, tags[i], archiveText)
 		ratingRow = append(ratingRow, btn)
 	}
 	selector.Inline(
@@ -40,3 +36,5 @@ func formInlineButtons(entryID int, archive bool) *tele.ReplyMarkup {
 	)
 	return selector
 }
+
+// state: archived, hasTagSrolled, hasOneOfRating

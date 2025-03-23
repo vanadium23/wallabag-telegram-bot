@@ -181,7 +181,7 @@ func StartTelegramBot(
 				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
 			})
 		}
-		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formInlineButtons(int(entryID), parts[1] == "0"))
+		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formInlineButtons(int(entryID), parts[1] != "0"))
 		return c.Respond(&tele.CallbackResponse{
 			CallbackID: c.Callback().ID,
 			Text:       "Entry was mark as scrolled.",
