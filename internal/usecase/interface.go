@@ -19,7 +19,7 @@ type ArticleUseCase interface {
 	SaveForLater(url string) (WallabotArticle, error)
 	FindRandom(count int) ([]WallabotArticle, error)
 	FindRecent(count int) ([]WallabotArticle, error)
-	// FindShort(count int) ([]WallabotArticle, error)
+	FindShort(count int) ([]WallabotArticle, error)
 }
 
 type WallabotArticle struct {
