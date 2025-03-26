@@ -63,6 +63,7 @@ func StartTelegramBot(
 	b.Handle("/random", func(c tele.Context) error {
 		articles, err := wallabotUseCase.FindRandom(5)
 		if err != nil {
+			log.Printf("Wallabag failed with error: %v", err)
 			return c.Send("Wallabag failed with error: %v", err)
 		}
 		for _, article := range articles {
@@ -75,6 +76,7 @@ func StartTelegramBot(
 	b.Handle("/recent", func(c tele.Context) error {
 		articles, err := wallabotUseCase.FindRecent(5)
 		if err != nil {
+			log.Printf("Wallabag failed with error: %v", err)
 			return c.Send("Wallabag failed with error: %v", err)
 		}
 		for _, article := range articles {
@@ -87,6 +89,7 @@ func StartTelegramBot(
 	b.Handle("/short", func(c tele.Context) error {
 		articles, err := wallabotUseCase.FindShort(5)
 		if err != nil {
+			log.Printf("Wallabag failed with error: %v", err)
 			return c.Send("Wallabag failed with error: %v", err)
 		}
 		for _, article := range articles {
