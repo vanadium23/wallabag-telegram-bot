@@ -133,7 +133,7 @@ func TestWallabagClientUpdateArticle(t *testing.T) {
 		Password,
 		"",
 	)
-	err := wallabagClient.UpdateArticle(entryID, archive)
+	_, err := wallabagClient.UpdateArticle(entryID, archive)
 	if err != nil {
 		t.Errorf("Unexpected error during %s", err)
 	}
@@ -211,7 +211,7 @@ func TestWallabagClientFetchArticles(t *testing.T) {
 		Password,
 		"",
 	)
-	articles, err := wallabagClient.FetchArticles(page, perPage, archive)
+	articles, err := wallabagClient.FetchArticles(page, perPage, archive, []string{})
 	if err != nil {
 		t.Errorf("Unexpected error during %s", err)
 	}
