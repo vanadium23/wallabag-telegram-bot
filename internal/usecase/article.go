@@ -103,7 +103,7 @@ func (wau *WallabotArticleUseCase) SaveForLater(url string) (WallabotArticle, er
 }
 
 func (wau *WallabotArticleUseCase) FindRandom(count int) ([]WallabotArticle, error) {
-	entries, err := wau.wc.FetchArticles(0, 100, 0, nil)
+	entries, err := wau.wc.FetchArticles(1, 100, 0, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (wau *WallabotArticleUseCase) FindRandom(count int) ([]WallabotArticle, err
 }
 
 func (wau *WallabotArticleUseCase) FindRecent(count int) ([]WallabotArticle, error) {
-	entries, err := wau.wc.FetchArticles(0, count, 0, nil)
+	entries, err := wau.wc.FetchArticles(1, count, 0, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (wau *WallabotArticleUseCase) FindRecent(count int) ([]WallabotArticle, err
 }
 
 func (wau *WallabotArticleUseCase) FindShort(count int) ([]WallabotArticle, error) {
-	entries, err := wau.wc.FetchArticles(0, 100, 0, []string{"short"})
+	entries, err := wau.wc.FetchArticles(1, 100, 0, []string{"short"})
 	if err != nil {
 		return nil, err
 	}
