@@ -38,18 +38,33 @@ type WallabotArticle struct {
 func NewWallabotArticle(entry wallabag.WallabagEntry) WallabotArticle {
 
 	tags := make([]string, len(entry.Tags))
+	scrolled := false
+	hasRating := false
 	for i := 0; i < len(entry.Tags); i++ {
 		// TODO: calculate scrollable and rating
 		tags[i] = entry.Tags[i].Label
+		if tags[i] == "scrolled" {
+			scrolled = true
+		}
+		_, ok := RatingFromString(tags[i])
+		if ok {
+			hasRating = true
+		}
 	}
 
 	return WallabotArticle{
-		ID:     entry.ID,
-		IsRead: entry.IsArchived != 0,
-		tags:   tags,
+		ID:          entry.ID,
+		IsRead:      entry.IsArchived != 0,
+		tags:        tags,
+		Url:         entry.Url,
+		Title:       entry.Title,
+		CreatedAt:   entry.CreatedAt.Time,
+		ReadingTime: entry.ReadingTime,
+		Scrolled:    scrolled,
+		HasRating:   hasRating,
 	}
 }
 
 func (wa WallabotArticle) PublicTags() string {
-	return strings.Join(wa.tags, ",")
+	return strings.Join(wa.tags, ", ")
 }
