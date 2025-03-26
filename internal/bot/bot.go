@@ -84,6 +84,18 @@ func StartTelegramBot(
 		}
 		return nil
 	})
+	b.Handle("/short", func(c tele.Context) error {
+		articles, err := wallabotUseCase.FindShort(5)
+		if err != nil {
+			return c.Send("Wallabag failed with error: %v", err)
+		}
+		for _, article := range articles {
+			msg := formatArticleMessage(article)
+			btns := formArticleButtons(article)
+			c.Send(msg, btns)
+		}
+		return nil
+	})
 	b.Handle(formCallbackQuery(archiveText), func(c tele.Context) error {
 		entryID, err := strconv.ParseInt(c.Callback().Data, 10, 64)
 		if err != nil {
@@ -131,14 +143,14 @@ func StartTelegramBot(
 		if err != nil {
 			return c.Respond(&tele.CallbackResponse{
 				CallbackID: c.Callback().ID,
-				Text:       fmt.Sprintf("Error during archiving entry: %v", err),
+				Text:       fmt.Sprintf("Error during mark as scrolled entry: %v", err),
 			})
 		}
 		article, err := wallabotUseCase.MarkScrolled(int(entryID))
 		if err != nil {
 			return c.Respond(&tele.CallbackResponse{
 				CallbackID: c.Callback().ID,
-				Text:       fmt.Sprintf("Error during archiving entry: %v", err),
+				Text:       fmt.Sprintf("Error during mark as scrolled entry: %v", err),
 			})
 		}
 		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formArticleButtons(article))
@@ -152,14 +164,14 @@ func StartTelegramBot(
 		if len(parts) < 2 {
 			return c.Respond(&tele.CallbackResponse{
 				CallbackID: c.Callback().ID,
-				Text:       fmt.Sprintf("Error during restoring entry: wrong callback data"),
+				Text:       fmt.Sprintf("Error during rate entry: wrong callback data"),
 			})
 		}
 		entryID, err := strconv.ParseInt(parts[0], 10, 64)
 		if err != nil {
 			return c.Respond(&tele.CallbackResponse{
 				CallbackID: c.Callback().ID,
-				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+				Text:       fmt.Sprintf("Error during rate entry: %v", err),
 			})
 		}
 		ratingTag := parts[1]
@@ -167,7 +179,7 @@ func StartTelegramBot(
 		if err != nil {
 			return c.Respond(&tele.CallbackResponse{
 				CallbackID: c.Callback().ID,
-				Text:       fmt.Sprintf("Error during restoring entry: %v", err),
+				Text:       fmt.Sprintf("Error during rate entry: %v", err),
 			})
 		}
 		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formArticleButtons(article))
