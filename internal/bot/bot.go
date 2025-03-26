@@ -236,7 +236,7 @@ func formArticleButtons(article usecase.WallabotArticle) *tele.ReplyMarkup {
 	selector := &tele.ReplyMarkup{}
 	stateRow := selector.Row()
 	stateBtn := tele.Btn{}
-	if article.IsRead {
+	if !article.IsRead {
 		stateBtn = selector.Data("✅", archiveText, entry)
 	} else {
 		stateBtn = selector.Data("📥", unarchiveText, entry)
