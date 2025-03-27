@@ -215,7 +215,7 @@ func formCallbackQuery(text string) string {
 const entryMessageTemplates = `
 Article №%d
 
-title: %s
+### %s
 
 %s
 

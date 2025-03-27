@@ -59,7 +59,11 @@ func (wau *WallabotArticleUseCase) MarkScrolled(entryID int) (WallabotArticle, e
 		return WallabotArticle{}, err
 	}
 
-	return wau.MarkRead(entryID)
+	entry, err := wau.wc.UpdateArticle(entryID, 1)
+	if err != nil {
+		return WallabotArticle{}, err
+	}
+	return NewWallabotArticle(entry), nil
 }
 
 // func (wau *WallabotArticleUseCase) DeleteScrolled(entryID int) (WallabotArticle, error) {}
@@ -79,7 +83,11 @@ func (wau *WallabotArticleUseCase) AddRating(entryID int, rating string) (Wallab
 		return WallabotArticle{}, err
 	}
 
-	return wau.MarkRead(entryID)
+	entry, err := wau.wc.UpdateArticle(entryID, 1)
+	if err != nil {
+		return WallabotArticle{}, err
+	}
+	return NewWallabotArticle(entry), nil
 }
 
 // func (wau *WallabotArticleUseCase) DeleteRating(entryID int) (WallabotArticle, error)   {}
