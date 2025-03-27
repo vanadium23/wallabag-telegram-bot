@@ -53,13 +53,13 @@ func (wau *WallabotArticleUseCase) MarkScrolled(entryID int) (WallabotArticle, e
 	wau.mxs[entryID%mxPool].Lock()
 	defer wau.mxs[entryID%mxPool].Unlock()
 
-	entry, err := wau.wc.AddTagsToArticle(entryID, []string{"scrolled"})
+	_, err := wau.wc.AddTagsToArticle(entryID, []string{"scrolled"})
 
 	if err != nil {
 		return WallabotArticle{}, err
 	}
 
-	return NewWallabotArticle(entry), nil
+	return wau.MarkRead(entryID)
 }
 
 // func (wau *WallabotArticleUseCase) DeleteScrolled(entryID int) (WallabotArticle, error) {}
@@ -73,13 +73,13 @@ func (wau *WallabotArticleUseCase) AddRating(entryID int, rating string) (Wallab
 	wau.mxs[entryID%mxPool].Lock()
 	defer wau.mxs[entryID%mxPool].Unlock()
 
-	entry, err := wau.wc.AddTagsToArticle(entryID, []string{rating})
+	_, err := wau.wc.AddTagsToArticle(entryID, []string{rating})
 
 	if err != nil {
 		return WallabotArticle{}, err
 	}
 
-	return NewWallabotArticle(entry), nil
+	return wau.MarkRead(entryID)
 }
 
 // func (wau *WallabotArticleUseCase) DeleteRating(entryID int) (WallabotArticle, error)   {}

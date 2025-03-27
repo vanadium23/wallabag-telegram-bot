@@ -159,7 +159,7 @@ func StartTelegramBot(
 		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formArticleButtons(article))
 		return c.Respond(&tele.CallbackResponse{
 			CallbackID: c.Callback().ID,
-			Text:       "Entry was mark as scrolled.",
+			Text:       "Entry was mark as scrolled and archived.",
 		})
 	})
 	b.Handle(formCallbackQuery(rateText), func(c tele.Context) error {
@@ -188,7 +188,7 @@ func StartTelegramBot(
 		c.Bot().EditReplyMarkup(c.Update().Callback.Message, formArticleButtons(article))
 		return c.Respond(&tele.CallbackResponse{
 			CallbackID: c.Callback().ID,
-			Text:       fmt.Sprintf("Entry was rated as %s.", ratingTag),
+			Text:       fmt.Sprintf("Entry mark as read and was rated as %s.", ratingTag),
 		})
 	})
 	b.Handle(tele.OnText, func(c tele.Context) error {
@@ -253,7 +253,7 @@ func formArticleButtons(article usecase.WallabotArticle) *tele.ReplyMarkup {
 	ratingRow := selector.Row()
 	if !article.HasRating {
 		// rating
-		var emojis = []string{"🙁", "😕", "😊", "😎"}
+		var emojis = []string{"👎", "😕", "👍", "🌟"}
 		var tags = []string{"bad", "normal", "good", "great"}
 		for i, emoji := range emojis {
 			btn := selector.Data(emoji, rateText, entry, tags[i])
