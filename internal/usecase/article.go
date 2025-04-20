@@ -148,3 +148,14 @@ func (wau *WallabotArticleUseCase) FindShort(count int) ([]WallabotArticle, erro
 	}
 	return articles, nil
 }
+
+func (wau *WallabotArticleUseCase) FindByID(entryID int) (WallabotArticle, error) {
+	wau.mxs[entryID%mxPool].Lock()
+	defer wau.mxs[entryID%mxPool].Unlock()
+
+	entry, err := wau.wc.FetchArticle(entryID)
+	if err != nil {
+		return WallabotArticle{}, err
+	}
+	return NewWallabotArticle(entry), nil
+}
