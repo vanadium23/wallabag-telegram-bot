@@ -14,6 +14,12 @@ type WallabagCreateEntry struct {
 	Tags string `json:"tags"`
 }
 
+type WallabagTag struct {
+	ID    int    `json:"id"`
+	Label string `json:"label"`
+	Slug  string `json:"slug"`
+}
+
 type WallabagEntry struct {
 	Url         string        `json:"url"`
 	ID          int           `json:"id,omitempty"`
@@ -22,6 +28,7 @@ type WallabagEntry struct {
 	Title       string        `json:"title"`
 	ReadingTime int           `json:"reading_time"`
 	IsArchived  int           `json:"is_archived"`
+	Tags        []WallabagTag `json:"tags"`
 }
 
 type WallabagOauthToken struct {
@@ -156,7 +163,7 @@ func (wc WallabagClient) CreateArticle(articleURL string) (WallabagEntry, error)
 	return createdEntry, err
 }
 
-func (wc WallabagClient) FetchArticles(page int, perPage int, archive int) ([]WallabagEntry, error) {
+func (wc WallabagClient) FetchArticles(page int, perPage int, archive int, tags []string) ([]WallabagEntry, error) {
 	url := fmt.Sprintf("%s/api/entries.json?page=%d&perPage=%d&archive=%d", wc.baseURL, page, perPage, archive)
 	req, err := http.NewRequest("GET", url, nil)
 
@@ -186,7 +193,35 @@ func (wc WallabagClient) FetchArticles(page int, perPage int, archive int) ([]Wa
 	return response.Data.Entries, err
 }
 
-func (wc WallabagClient) UpdateArticle(entryID int, archive int) error {
+func (wc WallabagClient) FetchArticle(entryID int) (WallabagEntry, error) {
+	url := fmt.Sprintf("%s/api/entries/%d.json", wc.baseURL, entryID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return WallabagEntry{}, err
+	}
+
+	accessToken, err := wc.fetchAccessToken()
+	if err != nil {
+		return WallabagEntry{}, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	resp, err := wc.client.Do(req)
+	if err != nil {
+		return WallabagEntry{}, err
+	}
+	var response WallabagEntry
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&response)
+
+	return response, nil
+}
+
+func (wc WallabagClient) UpdateArticle(entryID int, archive int) (WallabagEntry, error) {
 	updateEntry := WallabagUpdateEntryData{
 		Archive: archive,
 	}
@@ -194,51 +229,61 @@ func (wc WallabagClient) UpdateArticle(entryID int, archive int) error {
 	data, _ := json.Marshal(updateEntry)
 	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(data))
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
 
 	accessToken, err := wc.fetchAccessToken()
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	_, err = wc.client.Do(req)
+	resp, err := wc.client.Do(req)
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
-	return nil
+	var response WallabagEntry
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&response)
+
+	return response, nil
 }
 
-func (wc WallabagClient) AddTagsToArticle(entryID int, tags []string) error {
+func (wc WallabagClient) AddTagsToArticle(entryID int, tags []string) (WallabagEntry, error) {
 	data := map[string]string{
 		"tags": strings.Join(tags, ","),
 	}
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
 	url := fmt.Sprintf("%s/api/entries/%d/tags.json", wc.baseURL, entryID)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
 
 	accessToken, err := wc.fetchAccessToken()
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 
-	_, err = wc.client.Do(req)
+	resp, err := wc.client.Do(req)
 	if err != nil {
-		return err
+		return WallabagEntry{}, err
 	}
-	return nil
+	var response WallabagEntry
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&response)
+
+	return response, nil
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/bot"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/tagging"
+	"github.com/vanadium23/wallabag-telegram-bot/internal/usecase"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
 )
 
@@ -140,12 +141,15 @@ func main() {
 		config.OpenrouterApiKey,
 		config.OpenrouterModel,
 	)
+	wallabotUseCase := usecase.NewWallabotArticleUseCase(
+		wallabagClient,
+		tagger,
+	)
 	b := bot.StartTelegramBot(
 		config.TelegramToken,
 		timeOut*time.Second,
 		config.TelegramAllowedUsers,
-		wallabagClient,
-		tagger,
+		wallabotUseCase,
 	)
 	if b != nil {
 		b.Start()
