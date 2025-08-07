@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -198,16 +199,32 @@ func (wc WallabagClient) FetchArticles(page int, perPage int, archive int, tags 
 		return nil, fmt.Errorf("API request failed with status %d: %s for URL: %s", resp.StatusCode, resp.Status, url)
 	}
 
-	var response WallabagEntryResponse
-	err = json.NewDecoder(resp.Body).Decode(&response)
+	// Read response body for debugging
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode response from %s: %w", url, err)
+		return nil, fmt.Errorf("failed to read response body from %s: %w", url, err)
+	}
+
+	// Log response info for debugging
+	fmt.Printf("DEBUG: Response Status: %d, Content-Length: %d, Body Length: %d\n", resp.StatusCode, resp.ContentLength, len(bodyBytes))
+	fmt.Printf("DEBUG: Response Body Preview: %.200s...\n", string(bodyBytes))
+
+	// Create new reader from the body bytes
+	bodyReader := bytes.NewReader(bodyBytes)
+
+	var response WallabagEntryResponse
+	err = json.NewDecoder(bodyReader).Decode(&response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode response from %s: %w (Status: %d, Content-Length: %d, Body Length: %d)", url, err, resp.StatusCode, resp.ContentLength, len(bodyBytes))
 	}
 	return response.Data.Entries, nil
 }
 
-func (wc WallabagClient) FetchArticlesWithSince(page int, perPage int, archive int, since int64, tags []string) ([]WallabagEntry, error) {
-	url := fmt.Sprintf("%s/api/entries.json?page=%d&perPage=%d&archive=%d&since=%d", wc.baseURL, page, perPage, archive, since)
+func (wc WallabagClient) FetchArticlesWithSince(page int, perPage int, archive int, since int64, tags []string, detail string) ([]WallabagEntry, error) {
+	if detail == "" {
+		detail = "full"
+	}
+	url := fmt.Sprintf("%s/api/entries.json?page=%d&perPage=%d&archive=%d&since=%d&detail=%s", wc.baseURL, page, perPage, archive, since, detail)
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {

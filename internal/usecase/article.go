@@ -165,7 +165,7 @@ func (wau *WallabotArticleUseCase) GetStats() (WallabagStats, error) {
 	var stats WallabagStats
 
 	// Get total unread articles (archive=0 means unread)
-	unreadEntries, err := wau.wc.FetchArticles(1, 1000, 0, nil)
+	unreadEntries, err := wau.wc.FetchArticlesWithSince(1, 1000, 0, 0, nil, "metadata")
 	if err != nil {
 		return stats, err
 	}
@@ -181,7 +181,7 @@ func (wau *WallabotArticleUseCase) GetStats() (WallabagStats, error) {
 	sevenDaysAgoUnix := sevenDaysAgo.Unix()
 
 	// Get archived articles from the last 7 days using the 'since' parameter
-	recentArchivedEntries, err := wau.wc.FetchArticlesWithSince(1, 1000, 1, sevenDaysAgoUnix, nil)
+	recentArchivedEntries, err := wau.wc.FetchArticlesWithSince(1, 1000, 1, sevenDaysAgoUnix, nil, "metadata")
 	if err != nil {
 		return stats, err
 	}

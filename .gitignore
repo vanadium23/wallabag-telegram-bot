@@ -2,3 +2,4 @@ wallabag.db
 wallabag.json
 bin/
 trash/
+.env

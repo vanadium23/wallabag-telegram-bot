@@ -109,11 +109,12 @@ func StartTelegramBot(
 			return c.Send(fmt.Sprintf("Failed to get statistics: %v", err))
 		}
 
-		message := fmt.Sprintf(`📊 **Wallabag Statistics**
+		message := fmt.Sprintf(`
+📊 Wallabag Statistics
 
-📚 **Total unread articles:** %d
-✅ **Articles archived today:** %d
-📅 **Articles archived (last 7 days):** %d`,
+	📚 Total unread articles: %d
+	✅ Articles archived today: %d
+	📅 Articles archived (last 7 days): %d`,
 			stats.TotalUnread,
 			stats.ArchivedToday,
 			stats.ArchivedLast7Days)
