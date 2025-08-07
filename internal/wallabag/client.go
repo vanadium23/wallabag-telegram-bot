@@ -122,14 +122,20 @@ func (wc *WallabagClient) fetchAccessToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("authentication failed with status %d: %s", resp.StatusCode, resp.Status)
+	}
+
 	var data WallabagOauthToken
 	err = json.NewDecoder(resp.Body).Decode(&data)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to decode token response: %w", err)
 	}
 	wc.accessTokenExpires = time.Now().Local().Add(time.Second * time.Duration(data.ExpiresIn))
 	wc.accessToken = data.AccessToken
-	return wc.accessToken, err
+	return wc.accessToken, nil
 }
 
 func (wc WallabagClient) CreateArticle(articleURL string) (WallabagEntry, error) {
@@ -175,7 +181,7 @@ func (wc WallabagClient) FetchArticles(page int, perPage int, archive int, tags 
 	}
 	accessToken, err := wc.fetchAccessToken()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get access token: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -184,16 +190,20 @@ func (wc WallabagClient) FetchArticles(page int, perPage int, archive int, tags 
 
 	resp, err := wc.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to make request to %s: %w", url, err)
 	}
-	var response WallabagEntryResponse
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s for URL: %s", resp.StatusCode, resp.Status, url)
+	}
+
+	var response WallabagEntryResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode response from %s: %w", url, err)
 	}
-	return response.Data.Entries, err
+	return response.Data.Entries, nil
 }
 
 func (wc WallabagClient) FetchArticlesWithSince(page int, perPage int, archive int, since int64, tags []string) ([]WallabagEntry, error) {
@@ -205,7 +215,7 @@ func (wc WallabagClient) FetchArticlesWithSince(page int, perPage int, archive i
 	}
 	accessToken, err := wc.fetchAccessToken()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get access token: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -214,16 +224,20 @@ func (wc WallabagClient) FetchArticlesWithSince(page int, perPage int, archive i
 
 	resp, err := wc.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to make request to %s: %w", url, err)
 	}
-	var response WallabagEntryResponse
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d: %s for URL: %s", resp.StatusCode, resp.Status, url)
+	}
+
+	var response WallabagEntryResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode response from %s: %w", url, err)
 	}
-	return response.Data.Entries, err
+	return response.Data.Entries, nil
 }
 
 func (wc WallabagClient) FetchArticle(entryID int) (WallabagEntry, error) {
