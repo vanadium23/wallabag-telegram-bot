@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"math/rand/v2"
+	"time"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/tagging"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
@@ -158,4 +159,49 @@ func (wau *WallabotArticleUseCase) FindByID(entryID int) (WallabotArticle, error
 		return WallabotArticle{}, err
 	}
 	return NewWallabotArticle(entry), nil
+}
+
+func (wau *WallabotArticleUseCase) GetStats() (WallabagStats, error) {
+	var stats WallabagStats
+
+	// Get total unread articles (archive=0 means unread)
+	unreadEntries, err := wau.wc.FetchArticles(1, 1000, 0, nil)
+	if err != nil {
+		return stats, err
+	}
+	stats.TotalUnread = len(unreadEntries)
+
+	// Calculate time boundaries for filtering
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	sevenDaysAgo := today.AddDate(0, 0, -7)
+	tomorrow := today.AddDate(0, 0, 1)
+
+	// Convert to Unix timestamps for the API 'since' parameter
+	sevenDaysAgoUnix := sevenDaysAgo.Unix()
+
+	// Get archived articles from the last 7 days using the 'since' parameter
+	recentArchivedEntries, err := wau.wc.FetchArticlesWithSince(1, 1000, 1, sevenDaysAgoUnix, nil)
+	if err != nil {
+		return stats, err
+	}
+
+	// Count articles archived today and in the last 7 days
+	for _, entry := range recentArchivedEntries {
+		if entry.ArchivedAt != nil {
+			archivedDate := entry.ArchivedAt.Time
+
+			// Check if archived today
+			if archivedDate.After(today) && archivedDate.Before(tomorrow) {
+				stats.ArchivedToday++
+			}
+
+			// Check if archived in last 7 days (including today)
+			if archivedDate.After(sevenDaysAgo) {
+				stats.ArchivedLast7Days++
+			}
+		}
+	}
+
+	return stats, nil
 }

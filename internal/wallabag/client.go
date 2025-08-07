@@ -24,6 +24,9 @@ type WallabagEntry struct {
 	Url         string        `json:"url"`
 	ID          int           `json:"id,omitempty"`
 	CreatedAt   *WallabagTime `json:"created_at"`
+	UpdatedAt   *WallabagTime `json:"updated_at"`
+	ArchivedAt  *WallabagTime `json:"archived_at"`
+	StarredAt   *WallabagTime `json:"starred_at"`
 	Content     string        `json:"content"`
 	Title       string        `json:"title"`
 	ReadingTime int           `json:"reading_time"`
@@ -165,6 +168,36 @@ func (wc WallabagClient) CreateArticle(articleURL string) (WallabagEntry, error)
 
 func (wc WallabagClient) FetchArticles(page int, perPage int, archive int, tags []string) ([]WallabagEntry, error) {
 	url := fmt.Sprintf("%s/api/entries.json?page=%d&perPage=%d&archive=%d", wc.baseURL, page, perPage, archive)
+	req, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	accessToken, err := wc.fetchAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	resp, err := wc.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	var response WallabagEntryResponse
+
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Data.Entries, err
+}
+
+func (wc WallabagClient) FetchArticlesWithSince(page int, perPage int, archive int, since int64, tags []string) ([]WallabagEntry, error) {
+	url := fmt.Sprintf("%s/api/entries.json?page=%d&perPage=%d&archive=%d&since=%d", wc.baseURL, page, perPage, archive, since)
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {

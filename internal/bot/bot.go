@@ -102,6 +102,24 @@ func StartTelegramBot(
 		}
 		return nil
 	})
+	b.Handle("/stats", func(c tele.Context) error {
+		stats, err := wallabotUseCase.GetStats()
+		if err != nil {
+			log.Printf("Wallabag failed with error: %v", err)
+			return c.Send(fmt.Sprintf("Failed to get statistics: %v", err))
+		}
+
+		message := fmt.Sprintf(`📊 **Wallabag Statistics**
+
+📚 **Total unread articles:** %d
+✅ **Articles archived today:** %d
+📅 **Articles archived (last 7 days):** %d`,
+			stats.TotalUnread,
+			stats.ArchivedToday,
+			stats.ArchivedLast7Days)
+
+		return c.Send(message)
+	})
 	b.Handle(formCallbackQuery(archiveText), func(c tele.Context) error {
 		entryID, err := strconv.ParseInt(c.Callback().Data, 10, 64)
 		if err != nil {

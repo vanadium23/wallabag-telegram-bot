@@ -21,6 +21,14 @@ type ArticleUseCase interface {
 	FindRandom(count int) ([]WallabotArticle, error)
 	FindRecent(count int) ([]WallabotArticle, error)
 	FindShort(count int) ([]WallabotArticle, error)
+
+	GetStats() (WallabagStats, error)
+}
+
+type WallabagStats struct {
+	TotalUnread       int `json:"total_unread"`
+	ArchivedToday     int `json:"archived_today"`
+	ArchivedLast7Days int `json:"archived_last_7_days"`
 }
 
 type WallabotArticle struct {
