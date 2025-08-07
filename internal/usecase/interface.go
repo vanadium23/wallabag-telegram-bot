@@ -29,6 +29,7 @@ type WallabagStats struct {
 	TotalUnread       int `json:"total_unread"`
 	ArchivedToday     int `json:"archived_today"`
 	ArchivedLast7Days int `json:"archived_last_7_days"`
+	AddedLast7Days    int `json:"added_last_7_days"`
 }
 
 type WallabotArticle struct {

@@ -114,10 +114,12 @@ func StartTelegramBot(
 
 	📚 Total unread articles: %d
 	✅ Articles archived today: %d
-	📅 Articles archived (last 7 days): %d`,
+	📅 Articles archived (last 7 days): %d
+	➕ Articles added (last 7 days): %d`,
 			stats.TotalUnread,
 			stats.ArchivedToday,
-			stats.ArchivedLast7Days)
+			stats.ArchivedLast7Days,
+			stats.AddedLast7Days)
 
 		return c.Send(message)
 	})

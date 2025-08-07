@@ -203,5 +203,37 @@ func (wau *WallabotArticleUseCase) GetStats() (WallabagStats, error) {
 		}
 	}
 
+	// Get articles added in the last 7 days (both archived and unarchived)
+	// First get unarchived articles created since 7 days ago
+	recentUnreadEntries, err := wau.wc.FetchArticlesWithSince(1, 1000, 0, sevenDaysAgoUnix, nil, "metadata")
+	if err != nil {
+		return stats, err
+	}
+
+	// Then get archived articles created since 7 days ago (different from the archived articles query above)
+	recentAllArchivedEntries, err := wau.wc.FetchArticlesWithSince(1, 1000, 1, sevenDaysAgoUnix, nil, "metadata")
+	if err != nil {
+		return stats, err
+	}
+
+	// Count articles added (created) in the last 7 days
+	for _, entry := range recentUnreadEntries {
+		if entry.CreatedAt != nil {
+			createdDate := entry.CreatedAt.Time
+			if createdDate.After(sevenDaysAgo) {
+				stats.AddedLast7Days++
+			}
+		}
+	}
+
+	for _, entry := range recentAllArchivedEntries {
+		if entry.CreatedAt != nil {
+			createdDate := entry.CreatedAt.Time
+			if createdDate.After(sevenDaysAgo) {
+				stats.AddedLast7Days++
+			}
+		}
+	}
+
 	return stats, nil
 }
