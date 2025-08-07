@@ -14,6 +14,7 @@ import (
 	logrus "github.com/sirupsen/logrus"
 
 	"github.com/vanadium23/wallabag-telegram-bot/internal/bot"
+	"github.com/vanadium23/wallabag-telegram-bot/internal/summarization"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/tagging"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/usecase"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/wallabag"
@@ -141,6 +142,12 @@ func main() {
 		config.OpenrouterApiKey,
 		config.OpenrouterModel,
 	)
+	summarizer := summarization.NewSummarizer(
+		config.OpenAISecretKey,
+		config.OpenAIProxyUrl,
+		config.OpenrouterApiKey,
+		config.OpenrouterModel,
+	)
 	wallabotUseCase := usecase.NewWallabotArticleUseCase(
 		wallabagClient,
 		tagger,
@@ -150,6 +157,7 @@ func main() {
 		timeOut*time.Second,
 		config.TelegramAllowedUsers,
 		wallabotUseCase,
+		summarizer,
 	)
 	if b != nil {
 		b.Start()

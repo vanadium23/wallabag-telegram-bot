@@ -16,6 +16,7 @@ type ArticleUseCase interface {
 	// DeleteRating(entryID int) (WallabotArticle, error)
 	// Summarize(entryID int) (string, error)
 
+	FindByID(entryID int) (WallabotArticle, error)
 	SaveForLater(url string) (WallabotArticle, error)
 	FindRandom(count int) ([]WallabotArticle, error)
 	FindRecent(count int) ([]WallabotArticle, error)
@@ -28,6 +29,7 @@ type WallabotArticle struct {
 	tags        []string
 	Url         string
 	Title       string
+	Content     string
 	CreatedAt   time.Time
 	ReadingTime int
 
@@ -57,6 +59,7 @@ func NewWallabotArticle(entry wallabag.WallabagEntry) WallabotArticle {
 		IsRead:      entry.IsArchived != 0,
 		tags:        tags,
 		Url:         entry.Url,
+		Content:     entry.Content,
 		Title:       entry.Title,
 		CreatedAt:   entry.CreatedAt.Time,
 		ReadingTime: entry.ReadingTime,

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vanadium23/wallabag-telegram-bot/internal/summarization"
 	"github.com/vanadium23/wallabag-telegram-bot/internal/usecase"
 	tele "gopkg.in/telebot.v3"
 	"mvdan.cc/xurls"
@@ -18,6 +19,7 @@ const (
 	scrolledText  = "scrolled"
 	rateText      = "rate"
 	unrateText    = "unrate"
+	summarizeText = "summarize"
 )
 
 func middlewareFilterUser(filterUsers []string) tele.MiddlewareFunc {
@@ -41,6 +43,7 @@ func StartTelegramBot(
 	filterUsers []string,
 	// for handlers
 	wallabotUseCase usecase.ArticleUseCase,
+	summarizier summarization.Summarizer,
 ) *tele.Bot {
 	pref := tele.Settings{
 		Token:  telegramBotToken,
@@ -191,6 +194,32 @@ func StartTelegramBot(
 			Text:       fmt.Sprintf("Entry mark as read and was rated as %s.", ratingTag),
 		})
 	})
+	b.Handle(formCallbackQuery(summarizeText), func(c tele.Context) error {
+		entryID, err := strconv.ParseInt(c.Callback().Data, 10, 64)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during summarize entry: %v", err),
+			})
+		}
+		article, err := wallabotUseCase.FindByID(int(entryID))
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during summarize entry: %v", err),
+			})
+		}
+		summary, err := summarizier.Summarize(article.Title, article.Content)
+		if err != nil {
+			return c.Respond(&tele.CallbackResponse{
+				CallbackID: c.Callback().ID,
+				Text:       fmt.Sprintf("Error during summarize entry: %v", err),
+			})
+		}
+		c.Bot().Send(c.Sender(), fmt.Sprintf("Summary %d: %s", entryID, summary))
+		return nil
+	})
+
 	b.Handle(tele.OnText, func(c tele.Context) error {
 		c.Send("Received message, finding articles and try to save")
 		for _, r := range xurls.Strict.FindAllString(c.Message().Text, -1) {
@@ -243,6 +272,8 @@ func formArticleButtons(article usecase.WallabotArticle) *tele.ReplyMarkup {
 	stateBtn := tele.Btn{}
 	if !article.IsRead {
 		stateBtn = selector.Data("✅", archiveText, entry)
+		summaryBtn := selector.Data("📝", summarizeText, entry)
+		stateRow = append(stateRow, summaryBtn)
 	} else {
 		stateBtn = selector.Data("📥", unarchiveText, entry)
 	}
