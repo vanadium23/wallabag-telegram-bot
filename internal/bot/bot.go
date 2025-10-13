@@ -306,7 +306,7 @@ func formArticleButtons(article usecase.WallabotArticle) *tele.ReplyMarkup {
 	if !article.HasRating {
 		// rating
 		var emojis = []string{"👎", "😕", "👍", "🌟"}
-		var tags = []string{"bad", "normal", "good", "great"}
+		var tags = []string{"rating:bad", "rating:normal", "rating:good", "rating:great"}
 		for i, emoji := range emojis {
 			btn := selector.Data(emoji, rateText, entry, tags[i])
 			ratingRow = append(ratingRow, btn)
