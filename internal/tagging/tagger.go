@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/vanadium23/wallabag-telegram-bot/pkg/chatclient"
 )
@@ -29,12 +30,21 @@ func (tagger LLMTagger) GuessTags(title, content string) ([]string, error) {
 	if tagger.key == "" {
 		return nil, errors.New("key was not provided for tagging system")
 	}
-	if content == "" {
-		return nil, errors.New("no content -> no tags")
+	// Check if content is empty or contains the wallabag error message
+	if strings.TrimSpace(content) == "" || strings.Contains(strings.ToLower(content), "wallabag can't retrieve contents for this article") {
+		return []string{"autotag:skipped"}, nil
 	}
+
+	// Calculate content limit based on available tokens
+	// Approximation: 1 token ≈ 4 characters
+	// System prompt (~875 tokens) + Title (~200 tokens) + Response (~200 tokens) + Buffer (~500 tokens)
+	// = ~1775 tokens overhead = ~7100 characters
+	// For 100k tokens total context: ~400k characters available
+	// Conservative limit: 100k characters for content
+	const maxContentChars = 100000
 	cut := len(content)
-	if cut > 4096 {
-		cut = 4096
+	if cut > maxContentChars {
+		cut = maxContentChars
 	}
 
 	resp, err := tagger.cl.CreateChatCompletion(chatclient.ChatCompletionRequest{
@@ -62,13 +72,23 @@ func (tagger LLMTagger) GuessTags(title, content string) ([]string, error) {
 
 	dataJson := resp.Choices[0].Message.Content
 	fmt.Printf("ChatCompletion response: %s\n", dataJson)
-	var tags []string
-	err = json.Unmarshal([]byte(dataJson), &tags)
+
+	// Parse as map[string][]string to get categorized tags
+	var tagData map[string][]string
+	err = json.Unmarshal([]byte(dataJson), &tagData)
 
 	if err != nil {
 		return nil, err
 	}
 
-	tags = append(tags, "autotag")
+	// Convert map to formatted tags (category:item)
+	var tags []string
+	for key, values := range tagData {
+		for _, item := range values {
+			tags = append(tags, fmt.Sprintf("%s:%s", key, item))
+		}
+	}
+
+	tags = append(tags, "autotag:v2")
 	return tags, nil
 }
