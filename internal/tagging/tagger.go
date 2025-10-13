@@ -73,9 +73,13 @@ func (tagger LLMTagger) GuessTags(title, content string) ([]string, error) {
 	dataJson := resp.Choices[0].Message.Content
 	fmt.Printf("ChatCompletion response: %s\n", dataJson)
 
+	// Remove ```json and ``` from the response, because it's not valid JSON
+	result := strings.Replace(dataJson, "```json", "", 1)
+	result = strings.Replace(result, "```", "", 1)
+
 	// Parse as map[string][]string to get categorized tags
 	var tagData map[string][]string
-	err = json.Unmarshal([]byte(dataJson), &tagData)
+	err = json.Unmarshal([]byte(result), &tagData)
 
 	if err != nil {
 		return nil, err
