@@ -269,17 +269,68 @@ Article №%d
 
 %s
 
-tags: %s
+%s
 
 📅 %s ⏳ %d min
 `
+
+func formatTags(tagsStr string) string {
+	if tagsStr == "" {
+		return ""
+	}
+
+	// Split tags into individual items
+	tags := strings.Split(tagsStr, ", ")
+
+	// Group tags by category
+	categories := make(map[string][]string)
+
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if strings.Contains(tag, ":") {
+			parts := strings.SplitN(tag, ":", 2)
+			category := parts[0]
+			value := parts[1]
+			categories[category] = append(categories[category], value)
+		}
+	}
+
+	// Define category order and emojis
+	categoryOrder := []struct {
+		key   string
+		emoji string
+		label string
+	}{
+		{"topic", "📚", "Topic"},
+		{"problem", "🔧", "Problem"},
+		{"method", "⚡", "Method"},
+		{"tool", "🛠", "Tool"},
+	}
+
+	var result strings.Builder
+	result.WriteString("🏷 Tags:\n")
+
+	hasContent := false
+	for _, cat := range categoryOrder {
+		if values, ok := categories[cat.key]; ok && len(values) > 0 {
+			result.WriteString(fmt.Sprintf("  %s %s\n", cat.emoji, strings.Join(values, ", ")))
+			hasContent = true
+		}
+	}
+
+	if !hasContent {
+		return ""
+	}
+
+	return result.String()
+}
 
 func formatArticleMessage(article usecase.WallabotArticle) string {
 	return fmt.Sprintf(entryMessageTemplates,
 		article.ID,
 		article.Title,
 		article.Url,
-		article.PublicTags(),
+		formatTags(article.PublicTags()),
 		article.CreatedAt.Format("2006-01-02"),
 		article.ReadingTime,
 	)
