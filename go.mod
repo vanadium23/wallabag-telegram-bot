@@ -5,10 +5,8 @@ go 1.22.1
 toolchain go1.23.5
 
 require (
-	github.com/sashabaranov/go-openai v1.15.3
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.12.0
-	github.com/wojtess/openrouter-api-go v0.0.0-20250202202952-5d485e9a0ea7
 	gopkg.in/telebot.v3 v3.0.0
 	mvdan.cc/xurls v1.1.0
 )

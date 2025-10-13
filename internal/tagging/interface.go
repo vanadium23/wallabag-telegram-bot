@@ -25,7 +25,10 @@ func NewTagger(
 	openrouterApiKey string, openrouterModel string,
 ) Tagger {
 	if openrouterApiKey != "" {
-		return NewOpenrouterTagger(openrouterApiKey, proxyUrl, openrouterModel)
+		if openrouterModel == "" {
+			openrouterModel = "anthropic/claude-3.5-sonnet"
+		}
+		return NewLLMTagger("https://openrouter.ai/api/v1", openrouterApiKey, openrouterModel, proxyUrl)
 	}
-	return NewOpenaiTagger(openaiApiKey, proxyUrl)
+	return NewLLMTagger("https://api.openai.com/v1", openaiApiKey, "gpt-4", proxyUrl)
 }

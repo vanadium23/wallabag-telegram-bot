@@ -23,7 +23,10 @@ func NewSummarizer(
 	openrouterApiKey string, openrouterModel string,
 ) Summarizer {
 	if openrouterApiKey != "" {
-		return NewOpenrouterSummarizer(openrouterApiKey, proxyUrl, openrouterModel)
+		if openrouterModel == "" {
+			openrouterModel = "anthropic/claude-3.5-sonnet"
+		}
+		return NewLLMSummarizer("https://openrouter.ai/api/v1", openrouterApiKey, openrouterModel, proxyUrl)
 	}
-	return NewOpenaiSummarizer(openaiApiKey, proxyUrl)
+	return NewLLMSummarizer("https://api.openai.com/v1", openaiApiKey, "gpt-4", proxyUrl)
 }
