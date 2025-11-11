@@ -1,0 +1,46 @@
+---
+# Woodpecker CI configuration for building and pushing Docker image to Gitea
+
+variables:
+  - &image_name 'wallabag-telegram-bot'
+
+when:
+  - event: [push, tag]
+    branch: [master, main]
+  - event: tag
+
+steps:
+  # Build and push Docker image
+  build-docker:
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      registry: ${CI_FORGE_URL}
+      repo: ${CI_REPO_OWNER}/${image_name}
+      dockerfile: Dockerfile
+      # Tag with branch name, commit sha, and 'latest' for master/main
+      auto_tag: true
+      auto_tag_suffix: linux-amd64
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      event: [push, tag]
+
+  # Build for tags with proper versioning
+  build-docker-release:
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      registry: ${CI_FORGE_URL}
+      repo: ${CI_REPO_OWNER}/${image_name}
+      dockerfile: Dockerfile
+      tags:
+        - ${CI_COMMIT_TAG}
+        - latest
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      event: tag
+
