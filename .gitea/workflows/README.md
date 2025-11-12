@@ -1,5 +1,7 @@
 # Gitea Actions Workflow
 
+test
+
 ## Docker Image Publishing
 
 This workflow automatically builds and publishes Docker images to Gitea Packages.
